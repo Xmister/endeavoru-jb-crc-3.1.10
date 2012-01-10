@@ -154,4 +154,6 @@ source "drivers/staging/ti-st/Kconfig"
 
 source "drivers/staging/nvec/Kconfig"
 
+source "drivers/staging/cpupower/Kconfig" 
+
 endif # STAGING

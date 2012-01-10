@@ -68,3 +68,4 @@ obj-$(CONFIG_DRM_PSB)		+= gma500/
 obj-$(CONFIG_INTEL_MEI)		+= mei/
 obj-$(CONFIG_MFD_NVEC)		+= nvec/
 obj-$(CONFIG_TI_ST) 				+= ti-st/
+obj-$(CONFIG_CPUPOWER)		+=cpupower/
