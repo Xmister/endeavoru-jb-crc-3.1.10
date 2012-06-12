@@ -1117,6 +1117,7 @@ void do_timer(unsigned long ticks)
 	jiffies_64 += jiffies_per_tick * ticks;
 	update_wall_time();
 	calc_global_load(ticks);
+	prepare_idle_mask(ticks);
 }
 
 /**
