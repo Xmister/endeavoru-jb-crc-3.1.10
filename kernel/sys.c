@@ -121,9 +121,11 @@ EXPORT_SYMBOL(cad_pid);
  */
 
 void (*pm_power_off_prepare)(void);
-#ifndef CONFIG_TEGRA_MPDECISION
- extern void disable_auto_hotplug(void);
+
+#if !defined(CONFIG_CPUQUIET_FRAMEWORK) && !defined(CONFIG_TEGRA_MPDECISION)
+extern void disable_auto_hotplug(void);
 #endif
+
 /*
  * Returns true if current's euid is same as p's uid or euid,
  * or has CAP_SYS_NICE to p's user_ns.
@@ -365,7 +367,7 @@ EXPORT_SYMBOL(unregister_reboot_notifier);
  */
 void kernel_restart(char *cmd)
 {
-#ifndef CONFIG_TEGRA_MPDECISION
+#if !defined(CONFIG_CPUQUIET_FRAMEWORK) && !defined(CONFIG_TEGRA_MPDECISION)
 	disable_auto_hotplug();
 #endif
 	kernel_restart_prepare(cmd);
@@ -409,8 +411,8 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
-#ifndef CONFIG_TEGRA_MPDECISION
-        disable_auto_hotplug();
+#if !defined(CONFIG_CPUQUIET_FRAMEWORK) && !defined(CONFIG_TEGRA_MPDECISION)
+	disable_auto_hotplug();
 #endif
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
