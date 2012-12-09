@@ -1834,6 +1834,10 @@ static void synaptics_touch_sysfs_remove(void)
 
 static int synaptics_init_panel(struct synaptics_ts_data *ts)
 {
+	// CPU boost
+	cpu_clk = clk_get_sys(NULL, "cpu");
+
+
 	int ret = 0;
 
 	// CPU boost
