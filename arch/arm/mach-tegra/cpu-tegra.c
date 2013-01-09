@@ -65,6 +65,10 @@ unsigned int tegra_pmqos_cpu_freq_limits[CONFIG_NR_CPUS] = {0, 0, 0, 0};
 
 
 #if 0
+extern unsigned int get_powersave_freq();
+/* Symbol to store resume resume */
+extern unsigned long long wake_reason_resume;
+static spinlock_t user_cap_lock;
 struct work_struct htc_suspend_resume_work;
 #endif
 
@@ -80,7 +84,6 @@ static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
-static spinlock_t user_cap_lock;
 static int suspend_index;
 
 #ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
@@ -202,6 +205,18 @@ static unsigned int user_cap_speed(unsigned int requested_speed)
 		return cpu_user_cap;
 	return requested_speed;
 }
+
+#if 1
+static unsigned int powersave_speed(unsigned int requested_speed)
+{
+	if ((get_powersave_freq()) && (requested_speed > get_powersave_freq()))
+		return get_powersave_freq();
+	return requested_speed;
+}
+
+#else
+#define powersave_speed(requested_speed) (requested_speed)
+#endif
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 
@@ -2015,6 +2030,7 @@ int tegra_suspended_target(unsigned int target_freq)
 	/* apply only "hard" caps */
 	new_speed = tegra_throttle_governor_speed(new_speed);
 	new_speed = edp_governor_speed(new_speed);
+	new_speed = powersave_speed(new_speed);
 
 	return tegra_update_cpu_speed(new_speed);
 }
@@ -2376,6 +2392,7 @@ static int __init tegra_cpufreq_init(void)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
 	pm_qos_add_request(&cap_cpu_freq_req, PM_QOS_CPU_FREQ_MAX, (s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
+	pm_qos_add_request(&cap_cpu_num_req, PM_QOS_MAX_ONLINE_CPUS, (s32)PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE);
 	
 	// will cap frequency and num cpus on screen off
 	tegra_cpufreq_early_suspender.suspend = tegra_cpufreq_early_suspend;
@@ -2401,6 +2418,7 @@ static void __exit tegra_cpufreq_exit(void)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	pm_qos_remove_request(&boost_cpu_freq_req);
 	pm_qos_remove_request(&cap_cpu_freq_req);
+	pm_qos_remove_request(&cap_cpu_num_req);
 		
 	unregister_early_suspend(&tegra_cpufreq_early_suspender);
 #endif
