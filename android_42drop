@@ -1,0 +1,17 @@
+#!/bin/bash
+
+MTARGET=/BUILD/TO_PUSH/android_device_htc_endeavoru/prebuilt/modules
+MTARGET_LIVE=/BUILD/X42/device/htc/endeavoru/prebuilt/modules
+
+
+for x in `find . | grep \.ko$` ; do
+	echo "> $x"
+	cp $x $MTARGET
+	cp $x $MTARGET_LIVE
+done
+
+cp ./arch/arm/boot/zImage $MTARGET/../kernel
+cp ./arch/arm/boot/zImage $MTARGET_LIVE/../kernel
+
+ls -l $MTARGET
+ls -l $MTARGET/../kernel
