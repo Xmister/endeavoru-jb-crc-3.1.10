@@ -561,7 +561,8 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -O2 -mfloat-abi=softfp -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -fsingle-precision-constant -ftree-vectorize -funswitch-loops -mfpu=neon -mcpu=cortex-a9 -ffast-math
+KBUILD_CFLAGS	+= -O2 -marm -march=armv7-a -mfpu=neon-vfpv4 -ftree-vectorize -funsafe-math-optimizations -mfloat-abi=softfp -fsched-spec-load -mcpu=cortex-a9 -mtune=cortex-a9
+#-mfloat-abi=softfp -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -fsingle-precision-constant -ftree-vectorize -funswitch-loops 
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
