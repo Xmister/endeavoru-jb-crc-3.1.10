@@ -715,16 +715,16 @@ static void dbs_freq_increase(struct cpufreq_policy *p, unsigned load, unsigned 
 	if (dbs_tuners_ins.powersave_bias)
 		freq = powersave_bias_target(p, freq, CPUFREQ_RELATION_H);
 	else if (p->cur == p->max) {
-		trace_cpufreq_interactive_already (p->cpu, load, p->cur, p->cur);
+		//trace_cpufreq_interactive_already (p->cpu, load, p->cur, p->cur);
 		return;
 	}
 
-	trace_cpufreq_interactive_target (p->cpu, load, p->cur, freq);
+	//trace_cpufreq_interactive_target (p->cpu, load, p->cur, freq);
 
 	__cpufreq_driver_target(p, freq, dbs_tuners_ins.powersave_bias ?
 			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
 
-	trace_cpufreq_interactive_up (p->cpu, freq, p->cur);
+	//trace_cpufreq_interactive_up (p->cpu, freq, p->cur);
 }
 
 #ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
@@ -889,7 +889,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	/* Check for frequency decrease */
 	/* if we cannot reduce the frequency anymore, break out early */
 	if (policy->cur == policy->min){
-		trace_cpufreq_interactive_already (policy->cpu, cur_load, policy->cur,policy->cur);
+		//trace_cpufreq_interactive_already (policy->cpu, cur_load, policy->cur,policy->cur);
 		return;
 	}
 	/*
@@ -912,17 +912,17 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 			freq_next = policy->min;
 
 		if (!dbs_tuners_ins.powersave_bias) {
-			trace_cpufreq_interactive_target (policy->cpu, cur_load, policy->cur, freq_next);
+			//trace_cpufreq_interactive_target (policy->cpu, cur_load, policy->cur, freq_next);
 			__cpufreq_driver_target(policy, freq_next,
 					CPUFREQ_RELATION_L);
 		} else {
 			int freq = powersave_bias_target(policy, freq_next,
 					CPUFREQ_RELATION_L);
-			trace_cpufreq_interactive_target (policy->cpu, cur_load, policy->cur, freq_next);
+			//trace_cpufreq_interactive_target (policy->cpu, cur_load, policy->cur, freq_next);
 			__cpufreq_driver_target(policy, freq,
 				CPUFREQ_RELATION_L);
 		}
-		trace_cpufreq_interactive_down (policy->cpu, cur_load, policy->cur);
+		//trace_cpufreq_interactive_down (policy->cpu, cur_load, policy->cur);
 	}
 }
 
