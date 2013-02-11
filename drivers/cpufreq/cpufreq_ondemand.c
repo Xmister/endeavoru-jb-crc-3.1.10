@@ -29,8 +29,8 @@
 /* Google systrace just supports Interactive governor (option -l)
 * Just backport Interactive trace points for Ondemand governor use
 */
-#define CREATE_TRACE_POINTS
-#include <trace/events/cpufreq_interactive.h>
+//#define CREATE_TRACE_POINTS
+//#include <trace/events/cpufreq_interactive.h>
 
 /*
  * dbs is used in this file as a shortform for demandbased switching
