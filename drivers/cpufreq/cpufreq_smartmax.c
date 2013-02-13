@@ -83,9 +83,16 @@ static unsigned long up_rate_us;
 #define DEFAULT_DOWN_RATE_US 48000
 static unsigned long down_rate_us;
 
-
 #define DEFAULT_SAMPLING_RATE 50000
 static unsigned int sampling_rate;
+
+#define DEFAULT_INPUT_BOOST_DURATION 50000000
+static unsigned int input_boost_duration;
+
+static unsigned int Touch_poke_attr[4] = {1300000, 0, 0, 0};
+static bool touch_poke = true;
+
+static bool sync_cpu_downscale = false;
 
 /*************** End of tunables ***************/
 
@@ -134,10 +141,7 @@ static unsigned long debug_mask;
  * dbs_mutex protects dbs_enable in governor start/stop.
  */
 static DEFINE_MUTEX(dbs_mutex);
-
-static unsigned int Touch_poke_attr[4] = {1300000, 0, 0, 0};
-static bool touch_poke = true;
-static unsigned int input_boost_duration = 50000000;
+static DEFINE_MUTEX(set_speed_lock);
 
 extern
 int tegra_input_boost (
@@ -270,6 +274,7 @@ inline static void target_freq(struct cpufreq_policy *policy, struct smartmax_in
 	struct cpufreq_frequency_table *table = this_smartmax->freq_table;
     cputime64_t now = ktime_to_ns (ktime_get ());	
     int ramp_dir = this_smartmax->ramp_dir;
+    unsigned int cpu = this_smartmax->cpu;
     
 	dprintk(SMARTMAX_DEBUG_ALG,"%s\n", __func__);
 	
@@ -309,23 +314,29 @@ inline static void target_freq(struct cpufreq_policy *policy, struct smartmax_in
 	}
 	else target = new_freq;
 
-	if(ramp_dir < 0){
+	if(ramp_dir < 0 && sync_cpu_downscale){
+		// only if all cpus get the target they will really scale down
+		// cause the largest defines the speed for all
+		mutex_lock(&set_speed_lock);
 		for_each_online_cpu(j) {
 			struct smartmax_info_s *j_this_smartmax = &per_cpu(smartmax_info, j);
-			struct cpufreq_policy *j_policy = j_this_smartmax->cur_policy;
-			dprintk(SMARTMAX_DEBUG_JUMPS,"SmartassQ: jumping from %d to %d => %d (%d) cpu %d\n",
-				old_freq,new_freq,target,policy->cur, j_this_smartmax->cpu);
+				
+			if (j_this_smartmax->enable) {
+				struct cpufreq_policy *j_policy = j_this_smartmax->cur_policy;
+				dprintk(SMARTMAX_DEBUG_JUMPS,"SmartassQ: jumping from %d to %d => %d (%d) cpu %d\n",
+					old_freq,new_freq,target,policy->cur, j_this_smartmax->cpu);
 
-			__cpufreq_driver_target(j_policy, target, prefered_relation);
+				__cpufreq_driver_target(j_policy, target, prefered_relation);
+			}
 		}	
+		mutex_unlock(&set_speed_lock);
 	} else {
-		dprintk(SMARTMAX_DEBUG_JUMPS,"SmartassQ: jumping from %d to %d => %d (%d)\n",
-			old_freq,new_freq,target,policy->cur);
+		// one time is enough - larget will define the speed for all 
+		dprintk(SMARTMAX_DEBUG_JUMPS,"SmartassQ: jumping from %d to %d => %d (%d) cpu %d\n",
+			old_freq,new_freq,target,policy->cur, cpu);
 
 		__cpufreq_driver_target(policy, target, prefered_relation);	
 	}
-	
-	
 	
 	// remember last time we changed frequency
 	this_smartmax->freq_change_time = now;
@@ -665,7 +676,6 @@ static ssize_t store_min_cpu_load(struct kobject *kobj, struct attribute *attr, 
 	else
 		return -EINVAL;
 	return count;
-
 }
 
 static ssize_t show_sampling_rate(struct kobject *kobj, struct attribute *attr, char *buf)
@@ -685,6 +695,75 @@ static ssize_t store_sampling_rate(struct kobject *kobj, struct attribute *attr,
 	return count;
 }
 
+static ssize_t show_touch_poke(struct kobject *kobj, struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u,%u,%u,%u\n", Touch_poke_attr[0], Touch_poke_attr[1],
+		Touch_poke_attr[2], Touch_poke_attr[3]);
+}
+
+static ssize_t store_touch_poke(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	int ret;
+	ret = sscanf(buf, "%u,%u,%u,%u", &Touch_poke_attr[0], &Touch_poke_attr[1],
+		&Touch_poke_attr[2], &Touch_poke_attr[3]);
+	if (ret < 4)
+		return -EINVAL;
+
+	if(Touch_poke_attr[0] == 0)
+		touch_poke = false;
+	else
+		touch_poke = true;
+
+	return count;
+}
+
+static ssize_t show_input_boost_duration(struct kobject *kobj, struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%lu\n", input_boost_duration);
+}
+
+static ssize_t store_input_boost_duration(
+   struct kobject *a,
+   struct attribute *b,
+   const char *buf,
+   size_t count
+   ) {
+    unsigned int input;
+    int ret;
+    ret = sscanf(buf, "%u", &input);
+    if (ret != 1)
+        return -EINVAL;
+
+    input_boost_duration = input;
+
+    return count;
+}
+
+static ssize_t show_sync_cpu_downscale(struct kobject *kobj, struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", sync_cpu_downscale);
+}
+
+static ssize_t store_sync_cpu_downscale(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	ssize_t res;
+	unsigned long input;
+	res = strict_strtoul(buf, 0, &input);
+	if (res >= 0){
+		if (input == 0)
+			sync_cpu_downscale = false;
+		else if (input == 1)
+			sync_cpu_downscale = true;
+		else
+			return -EINVAL;
+	}
+	else
+		return -EINVAL;
+	return count;
+}
+
 #define define_global_rw_attr(_name)		\
 static struct global_attr _name##_attr =	\
 	__ATTR(_name, 0644, show_##_name, store_##_name)
@@ -698,6 +777,9 @@ define_global_rw_attr(ramp_down_step);
 define_global_rw_attr(max_cpu_load);
 define_global_rw_attr(min_cpu_load);
 define_global_rw_attr(sampling_rate);
+define_global_rw_attr(touch_poke);
+define_global_rw_attr(input_boost_duration);
+define_global_rw_attr(sync_cpu_downscale);
 
 static struct attribute * smartmax_attributes[] = {
 	&debug_mask_attr.attr,
@@ -709,6 +791,9 @@ static struct attribute * smartmax_attributes[] = {
 	&max_cpu_load_attr.attr,
 	&min_cpu_load_attr.attr,
 	&sampling_rate_attr.attr,	
+	&touch_poke_attr.attr,	
+	&input_boost_duration_attr.attr,	
+	&sync_cpu_downscale_attr.attr,
 	NULL,
 };
 
@@ -722,7 +807,7 @@ static int cpufreq_smartmax_input_boost_task (
    )
 {
     struct cpufreq_policy *policy;
-    struct cpu_dbs_info_s *this_dbs_info;
+    struct smartmax_info_s *this_smartass;
     unsigned int nr_cpus;
     unsigned int touch_poke_freq;
     unsigned int cpu;
@@ -752,6 +837,16 @@ static int cpufreq_smartmax_input_boost_task (
         input_boot_end_time =
             ktime_to_ns(ktime_get()) + input_boost_duration;
 
+        this_smartass = &per_cpu(smartmax_info, cpu);
+        if (this_smartass) {
+            policy = this_smartass->cur_policy;
+
+            if (policy) {
+                this_smartass->prev_cpu_idle =
+                   get_cpu_idle_time(cpu,
+                                     &this_smartass->prev_cpu_wall);
+            }
+        }
     }
 
     return 0;
@@ -954,6 +1049,7 @@ static int __init cpufreq_smartmax_init(void)
 	max_cpu_load = DEFAULT_MAX_CPU_LOAD;
 	min_cpu_load = DEFAULT_MIN_CPU_LOAD;
 	sampling_rate = DEFAULT_SAMPLING_RATE;
+	input_boost_duration = DEFAULT_INPUT_BOOST_DURATION;
 
 
 	/* Initalize per-cpu data: */
