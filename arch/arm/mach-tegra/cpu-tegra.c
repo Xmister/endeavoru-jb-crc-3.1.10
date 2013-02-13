@@ -79,6 +79,7 @@ static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
+static spinlock_t user_cap_lock;
 static int suspend_index;
 
 #ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
@@ -126,6 +127,22 @@ module_param_cb(force_policy_max, &policy_ops, &force_policy_max, 0644);
 
 
 static unsigned int cpu_user_cap = 0;
+
+void htc_set_cpu_user_cap(const unsigned int value)
+{
+	unsigned long flags = 0;
+	spin_lock_irqsave(&user_cap_lock, flags);
+	cpu_user_cap = value;
+	spin_unlock_irqrestore(&user_cap_lock, flags);
+}
+
+void htc_get_cpu_user_cap(unsigned int *value)
+{
+	unsigned long flags = 0;
+	spin_lock_irqsave(&user_cap_lock, flags);
+	*value = cpu_user_cap;
+	spin_unlock_irqrestore(&user_cap_lock, flags);
+}
 
 static inline void _cpu_user_cap_set_locked(void)
 {
@@ -2210,6 +2227,9 @@ static void tegra_cpufreq_early_suspend(struct early_suspend *h)
 #if 0
 	if(perf_early_suspend == 0){
 #endif
+		unsigned int i = 0;
+		for (i=0; i<=CONFIG_NR_CPUS; ++i)
+			pr_info("Xmister: max_freq on suspend at %u is %lu\n",i,policy_max_speed[i]);
 		pr_info("tegra_cpufreq_early_suspend: cap cpu freq to %dMHz\n", tegra_pmqos_cap_freq);
 		pm_qos_update_request(&cap_cpu_freq_req, (s32)tegra_pmqos_cap_freq);
 #if 0
@@ -2222,6 +2242,9 @@ static void tegra_cpufreq_early_suspend(struct early_suspend *h)
 
 static void tegra_cpufreq_late_resume(struct early_suspend *h)
 {
+	unsigned int i = 0;
+	for (i=0; i<=CONFIG_NR_CPUS; ++i)
+		pr_info("Xmister: max_freq on resume at %u is %lu\n",i,policy_max_speed[i]);
 	pr_info("tegra_cpufreq_late_resume: clean cpu freq cap\n");
 	pm_qos_update_request(&cap_cpu_freq_req, (s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
 
