@@ -58,6 +58,7 @@ extern int mpdecision_gmode_notifier(void);
 
 unsigned int tegra_pmqos_boost_freq = BOOST_CPU_FREQ_MIN;
 unsigned int tegra_pmqos_cap_freq = CAP_CPU_FREQ_MAX;
+unsigned int miss_freq_set=0;
 
 // maxwen: assumes 4 cores!
 unsigned int tegra_pmqos_cpu_freq_limits[CONFIG_NR_CPUS] = {0, 0, 0, 0};
@@ -2247,6 +2248,7 @@ static void tegra_cpufreq_late_resume(struct early_suspend *h)
 		pr_info("Xmister: max_freq on resume at %u is %lu\n",i,policy_max_speed[i]);
 	pr_info("tegra_cpufreq_late_resume: clean cpu freq cap\n");
 	pm_qos_update_request(&cap_cpu_freq_req, (s32)PM_QOS_CPU_FREQ_MAX_DEFAULT_VALUE);
+	miss_freq_set=1; //We want to miss 1 freq setting after this point
 
 #if 0	
 	pr_info("tegra_cpufreq_late_resume: clean cpu freq boost\n");
