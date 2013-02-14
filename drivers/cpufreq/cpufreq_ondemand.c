@@ -38,7 +38,7 @@
  */
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
-#define DEF_FREQUENCY_UP_THRESHOLD		(80)
+#define DEF_FREQUENCY_UP_THRESHOLD		(95)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL	(3)
@@ -49,8 +49,10 @@
 #define MIN_FREQUENCY_DOWN_DIFFERENTIAL		(1)
 #define DBS_INPUT_EVENT_FREQ_INCREASE		(1)
 #define DBS_INPUT_EVENT_MIN_FREQ		(1100000)
-#define DEF_UI_DYNAMIC_SAMPLING_RATE		(30000)
+#define DEF_UI_DYNAMIC_SAMPLING_RATE		(50000)
 #define DEF_UI_COUNTER				(5)
+#define DEF_TWO_PHASE_FREQ			(1200000)
+#define DEF_SAMPLING_RATE			(30000)
 
 /*
  * The polling frequency of this governor depends on the capability of
@@ -72,6 +74,7 @@ static unsigned int min_sampling_rate;
 
 #define POWERSAVE_BIAS_MAXLEVEL			(1000)
 #define POWERSAVE_BIAS_MINLEVEL			(-1000)
+#define DEF_POWERSAVE_BIAS			(190)
 
 static void do_dbs_timer(struct work_struct *work);
 static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
@@ -149,12 +152,13 @@ static struct dbs_tuners {
 	.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR,
 	.down_differential = DEF_FREQUENCY_DOWN_DIFFERENTIAL,
 	.ignore_nice = 0,
-	.powersave_bias = 0,
+	.powersave_bias = DEF_POWERSAVE_BIAS,
 #ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
-	.two_phase_freq = 0,
+	.two_phase_freq = DEF_TWO_PHASE_FREQ,
 #endif
 	.ui_sampling_rate = DEF_UI_DYNAMIC_SAMPLING_RATE,
 	.ui_counter = DEF_UI_COUNTER,
+	.sampling_rate = DEF_SAMPLING_RATE,
 };
 
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall)
