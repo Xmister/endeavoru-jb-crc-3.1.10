@@ -483,10 +483,6 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 #ifdef CONFIG_HOTPLUG_CPU
 	int cpu;
 #endif
-	if (miss_freq_set > 0) {
-		pr_info("Xmister: Governor miss\n");
-		return -EINVAL;
-	}	
 	ret = sscanf(buf, "%15s", str_governor);
 	if (ret != 1)
 		return -EINVAL;
