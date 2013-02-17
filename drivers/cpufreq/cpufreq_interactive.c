@@ -65,7 +65,7 @@ static spinlock_t down_cpumask_lock;
 static struct mutex set_speed_lock;
 
 /* Go to max speed when CPU load at or above this value. */
-#define DEFAULT_GO_MAXSPEED_LOAD 70
+#define DEFAULT_GO_MAXSPEED_LOAD 65
 static unsigned long go_maxspeed_load;
 
 /* Base of exponential raise to max speed; if 0 - jump to maximum */
@@ -86,7 +86,7 @@ static unsigned long sustain_load;
 /*
  * The minimum amount of time to spend at a frequency before we can ramp down.
  */
-#define DEFAULT_MIN_SAMPLE_TIME 100000;
+#define DEFAULT_MIN_SAMPLE_TIME 200000;
 static unsigned long min_sample_time;
 
 /*
