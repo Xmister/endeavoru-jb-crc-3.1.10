@@ -77,32 +77,32 @@ static struct mutex set_speed_lock;
 static u64 hispeed_freq;
 
 /* Go to hi speed when CPU load at or above this value. */
-#define DEFAULT_GO_HISPEED_LOAD 60
+#define DEFAULT_GO_HISPEED_LOAD 85
 static unsigned long go_hispeed_load;
 
 /*
  * The minimum amount of time to spend at a frequency before we can ramp down.
  */
-#define DEFAULT_MIN_SAMPLE_TIME (500 * USEC_PER_MSEC)
+#define DEFAULT_MIN_SAMPLE_TIME (30 * USEC_PER_MSEC)
 static unsigned long min_sample_time;
 
 /*
  * The sample rate of the timer used to increase frequency
  */
-#define DEFAULT_TIMER_RATE (50 * USEC_PER_MSEC)
+#define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
 static unsigned long timer_rate;
 
 /*
  * Wait this long before raising speed above hispeed, by default a single
  * timer interval.
  */
-#define DEFAULT_ABOVE_HISPEED_DELAY DEFAULT_TIMER_RATE
+#define DEFAULT_ABOVE_HISPEED_DELAY 0
 static unsigned long above_hispeed_delay_val;
 
 /*
  * Boost pulse to hispeed on touchscreen input.
  */
-
+#define DEFAULT_INPUT_BOOST_VAL 0
 static int input_boost_val;
 
 struct cpufreq_interactive_inputopen {
@@ -115,7 +115,7 @@ static struct cpufreq_interactive_inputopen inputopen;
 /*
  * Non-zero means longer-term speed boost active.
  */
-
+#define DEFAULT_BOOST_VAL 0
 static int boost_val;
 
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
@@ -947,6 +947,8 @@ static int __init cpufreq_interactive_init(void)
 	min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
 	above_hispeed_delay_val = DEFAULT_ABOVE_HISPEED_DELAY;
 	timer_rate = DEFAULT_TIMER_RATE;
+	input_boost_val = DEFAULT_INPUT_BOOST_VAL;
+	boost_val = DEFAULT_BOOST_VAL;
 
 	/* Initalize per-cpu timers */
 	for_each_possible_cpu(i) {
