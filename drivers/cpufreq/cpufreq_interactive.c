@@ -65,7 +65,7 @@ static spinlock_t down_cpumask_lock;
 static struct mutex set_speed_lock;
 
 /* Go to max speed when CPU load at or above this value. */
-#define DEFAULT_GO_MAXSPEED_LOAD 65
+#define DEFAULT_GO_MAXSPEED_LOAD 45
 static unsigned long go_maxspeed_load;
 
 /* Base of exponential raise to max speed; if 0 - jump to maximum */
@@ -86,13 +86,13 @@ static unsigned long sustain_load;
 /*
  * The minimum amount of time to spend at a frequency before we can ramp down.
  */
-#define DEFAULT_MIN_SAMPLE_TIME 200000;
+#define DEFAULT_MIN_SAMPLE_TIME 500000;
 static unsigned long min_sample_time;
 
 /*
  * The sample rate of the timer used to increase frequency
  */
-#define DEFAULT_TIMER_RATE 30000;
+#define DEFAULT_TIMER_RATE 50000;
 static unsigned long timer_rate;
 
 /*
@@ -102,7 +102,7 @@ static unsigned long timer_rate;
  * becomes the best way to enforce a square wave.
  * e.g. 5*MIN_SAMPLE_TIME = 20% high freq duty cycle
  */
-#define DEFAULT_HIGH_FREQ_MIN_DELAY 5*DEFAULT_MIN_SAMPLE_TIME
+#define DEFAULT_HIGH_FREQ_MIN_DELAY 0
 static unsigned long high_freq_min_delay;
 
 /*
@@ -114,7 +114,7 @@ static unsigned long max_normal_freq;
 
 
 /* Defines to control mid-range frequencies */
-#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 85
+#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 45
 
 static unsigned long midrange_freq;
 static unsigned long midrange_go_maxspeed_load;
