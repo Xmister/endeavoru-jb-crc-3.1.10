@@ -310,6 +310,7 @@ static void delay_callback(struct cpuquiet_attribute *attr)
 
 static void enable_callback(struct cpuquiet_attribute *attr)
 {
+<<<<<<< HEAD
 	int disabled = -1;
 
 	mutex_lock(tegra3_cpu_lock);
@@ -320,10 +321,24 @@ static void enable_callback(struct cpuquiet_attribute *attr)
 	} else if (enable && cpq_state == TEGRA_CPQ_DISABLED) {
 		disabled = 0;
 		cpq_state = TEGRA_CPQ_IDLE;
+=======
+	mutex_lock(tegra3_cpu_lock);
+
+	if (!enable && cpq_state != TEGRA_CPQ_DISABLED) {
+		cpq_state = TEGRA_CPQ_DISABLED;
+		mutex_unlock(tegra3_cpu_lock);
+		cancel_delayed_work_sync(&cpuquiet_work);
+		pr_info("Tegra cpuquiet clusterswitch disabled\n");
+		mutex_lock(tegra3_cpu_lock);
+	} else if (enable && cpq_state == TEGRA_CPQ_DISABLED) {
+		cpq_state = TEGRA_CPQ_IDLE;
+		pr_info("Tegra cpuquiet clusterswitch enabled\n");
+>>>>>>> 842fa98... ARM: tegra: add sysfs support for tegra cpuquiet driver
 		tegra_cpu_set_speed_cap(NULL);
 	}
 
 	mutex_unlock(tegra3_cpu_lock);
+<<<<<<< HEAD
 
 	if (disabled == -1)
 		return;
@@ -336,6 +351,8 @@ static void enable_callback(struct cpuquiet_attribute *attr)
 		pr_info("Tegra cpuquiet clusterswitch enabled\n");
 		cpuquiet_device_free();
 	}
+=======
+>>>>>>> 842fa98... ARM: tegra: add sysfs support for tegra cpuquiet driver
 }
 
 CPQ_BASIC_ATTRIBUTE(no_lp, 0644, bool);
