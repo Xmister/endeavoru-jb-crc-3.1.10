@@ -160,6 +160,7 @@ static cputime64_t boost_end_time = 0ULL;
 static unsigned int cur_boost_freq = 0;
 static unsigned int cur_boost_duration = 0;
 static bool boost_running = false;
+static unsigned int capped = 0;
 
 static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
 		unsigned int event);
@@ -224,6 +225,8 @@ inline static void smartmax_update_min_max(struct smartmax_info_s *this_smartmax
 	this_smartmax->ideal_speed = // ideal_freq; but make sure it obeys the policy min/max
 			policy->min < ideal_freq ?
 			(ideal_freq < policy->max ? ideal_freq : policy->max) : policy->min;
+	capped=policy->max;
+
 	
 }
 
@@ -884,7 +887,7 @@ static int cpufreq_smartmax_boost_task (
 			
         boost_running = true;
         /* boost ASAP */
-        if (tegra_input_boost(0, cur_boost_freq) < 0){
+        if (tegra_input_boost(0, ( (capped == 0 || cur_boost_freq<=capped) ? cur_boost_freq : capped) ) < 0){
             continue;
         }
 
