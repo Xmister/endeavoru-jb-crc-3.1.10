@@ -371,7 +371,6 @@ CPQ_BASIC_ATTRIBUTE(idle_top_freq, 0644, uint);
 #ifdef CONFIG_TEGRA_RUNNABLE_THREAD
 CPQ_BASIC_ATTRIBUTE(load_sample_rate, 0644, uint);
 #endif
-CPQ_BASIC_ATTRIBUTE(load_sample_rate, 0644, uint);
 CPQ_ATTRIBUTE(up_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(down_delay, 0644, ulong, delay_callback);
 
