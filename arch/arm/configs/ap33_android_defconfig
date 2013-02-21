@@ -558,7 +558,7 @@ CONFIG_CPU_IDLE_GOV_MENU=y
 #
 # CPUQUIET Framework
 #
-CONFIG_CPUQUIET_FRAMEWORK=y
+# CONFIG_CPUQUIET_FRAMEWORK is not set
 
 #
 # Floating point emulation
