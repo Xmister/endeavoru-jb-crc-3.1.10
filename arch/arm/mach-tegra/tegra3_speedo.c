@@ -20,6 +20,8 @@
 
 #include <linux/kernel.h>
 #include <linux/io.h>
+#include <linux/seq_file.h>
+#include <linux/debugfs.h>
 #include <linux/err.h>
 #include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
@@ -577,6 +579,44 @@ static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
 static struct kernel_param_ops tegra_profiles_ops = {
 	.get = get_enable_app_profiles,
 };
+
+#ifdef CONFIG_DEBUG_FS
+static int t3_variant_debugfs_show(struct seq_file *s, void *data)
+{
+	seq_printf(s, "cpu_speedo_id => %d\n", cpu_speedo_id);
+	seq_printf(s, "soc_speedo_id => %d\n", soc_speedo_id);
+	seq_printf(s, "cpu_process_id => %d\n", cpu_process_id);
+	seq_printf(s, "core_process_id => %d\n", core_process_id);
+
+	return 0;
+}
+
+static int t3_variant_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, t3_variant_debugfs_show, inode->i_private);
+}
+
+static const struct file_operations t3_variant_debugfs_fops = {
+	.open		= t3_variant_debugfs_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int __init tegra_variant_debugfs_init(void)
+{
+	struct dentry *d;
+
+	d = debugfs_create_file("t3_variant", S_IRUGO, NULL, NULL,
+				&t3_variant_debugfs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	return 0;
+}
+
+late_initcall(tegra_variant_debugfs_init);
+#endif /* CONFIG_DEBUG_FS */
 
 module_param_cb(tegra_enable_app_profiles,
 	&tegra_profiles_ops, &enable_app_profiles, 0444);
