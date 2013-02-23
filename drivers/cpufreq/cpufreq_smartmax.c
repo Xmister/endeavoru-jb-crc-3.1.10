@@ -86,7 +86,7 @@ static unsigned long down_rate_us;
 #define DEFAULT_SAMPLING_RATE 50000
 static unsigned int sampling_rate;
 
-#define DEFAULT_INPUT_BOOST_DURATION 50000000
+#define DEFAULT_INPUT_BOOST_DURATION 80000000
 static unsigned int input_boost_duration;
 
 static unsigned int touch_poke_freq = 1300000;
