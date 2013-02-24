@@ -462,6 +462,8 @@ static void cpufreq_interactive_idle_start(void)
 		&per_cpu(cpuinfo, smp_processor_id());
 	int pending;
 
+	BUG_ON(pcpu == NULL);
+
 	if (!pcpu->governor_enabled)
 		return;
 
@@ -514,6 +516,8 @@ static void cpufreq_interactive_idle_end(void)
 {
 	struct cpufreq_interactive_cpuinfo *pcpu =
 		&per_cpu(cpuinfo, smp_processor_id());
+
+	BUG_ON(pcpu == NULL);
 
 	pcpu->idling = 0;
 	smp_wmb();
