@@ -59,8 +59,8 @@
 /*
  * This will replace TEGRA_MPDEC_DELAY in each case.
  */
-#define TEGRA_MPDEC_LPCPU_UPDELAY         150
-#define TEGRA_MPDEC_LPCPU_DOWNDELAY       300
+#define TEGRA_MPDEC_LPCPU_UPDELAY         450
+#define TEGRA_MPDEC_LPCPU_DOWNDELAY       750
 
 /*
  * LPCPU hysteresis default values
