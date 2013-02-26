@@ -84,7 +84,7 @@ static unsigned long io_is_busy;
  * Targeted sustainable load relatively to current frequency.
  * If 0, target is set realtively to the max speed
  */
-#define DEFAULT_SUSTAIN_LOAD 0
+#define DEFAULT_SUSTAIN_LOAD 95
 static unsigned long sustain_load;
 
 /*
