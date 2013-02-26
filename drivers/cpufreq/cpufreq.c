@@ -49,6 +49,8 @@ static DEFINE_PER_CPU(char[CPUFREQ_NAME_LEN], cpufreq_cpu_governor);
 #endif
 static DEFINE_SPINLOCK(cpufreq_driver_lock);
 
+static unsigned int enable_gpu_voltage=0;
+
 /*
  * cpu_policy_rwsem is a per CPU reader-writer semaphore designed to cure
  * all cpufreq/hotplug/workqueue/etc related lock issues.
@@ -742,27 +744,30 @@ static ssize_t store_scaling_max_freq
 #include "../../arch/arm/mach-tegra/clock.h"
 
 extern int user_mv_table[MAX_DVFS_FREQS];
+extern int core_user_millivolts[MAX_DVFS_FREQS];
 struct uv_mv_struct{
 	unsigned long mhz;
 	int min_mv;
 	int max_mv;
 	int min_pos;
 	int max_pos;
+	int core;
 };
-static struct uv_mv_struct uv_list[MAX_DVFS_FREQS];
+static struct uv_mv_struct uv_list[MAX_DVFS_FREQS*2];
 
-static unsigned int UV_mV_init() {
-	int i = 0, j=0;
-	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
+static unsigned int get_mv_table_for_name(const char* cpu_name, const int core, const int pos) {
+	int i = 0, j=pos;
+	struct clk *cpu_clk_g = tegra_get_clock_by_name(cpu_name);
 
 	/* find how many actual entries there are */
 	i = cpu_clk_g->dvfs->num_freqs;
 	if ( i-- == 0 ) return 0;
-	uv_list[0].min_mv=cpu_clk_g->dvfs->millivolts[i];
-	uv_list[0].max_mv=cpu_clk_g->dvfs->millivolts[i];
-	uv_list[0].mhz=cpu_clk_g->dvfs->freqs[i]/1000000;
-	uv_list[0].min_pos=i;
-	uv_list[0].max_pos=i;
+	uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i];
+	uv_list[j].max_mv=cpu_clk_g->dvfs->millivolts[i];
+	uv_list[j].mhz=cpu_clk_g->dvfs->freqs[i]/1000000;
+	uv_list[j].min_pos=i;
+	uv_list[j].max_pos=i;
+	uv_list[j].core=core;
 	for(i--; i >=0; i--) {
 		if (cpu_clk_g->dvfs->freqs[i]/1000000 != cpu_clk_g->dvfs->freqs[i+1]/1000000) {	
 			if (uv_list[j].min_mv > cpu_clk_g->dvfs->millivolts[i+1]) uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i+1];
@@ -774,6 +779,7 @@ static unsigned int UV_mV_init() {
 			uv_list[j].mhz=cpu_clk_g->dvfs->freqs[i]/1000000;
 			uv_list[j].min_pos=i;
 			uv_list[j].max_pos=i;
+			uv_list[j].core=core;
 		} else {
 			if ( cpu_clk_g->dvfs->millivolts[i] < uv_list[j].min_mv ) uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i];
 			else if ( cpu_clk_g->dvfs->millivolts[i] > uv_list[j].max_mv ) uv_list[j].max_mv=cpu_clk_g->dvfs->millivolts[i];
@@ -785,6 +791,15 @@ static unsigned int UV_mV_init() {
 return j+1;
 }
 
+static DEFINE_MUTEX(dvfs_lock);
+
+static unsigned int UV_mV_init() {
+	unsigned int length=get_mv_table_for_name("cpu_g",0,0);
+	if (enable_gpu_voltage)
+		length=get_mv_table_for_name("3d",1,length);
+	return length;
+}
+
 static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
 	int i = 0;
@@ -794,7 +809,7 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 	
 	for(i--; i >=0; i--) {	
 			out += sprintf(out, "%lumhz: %i %i mV\n",
-			uv_list[i].mhz,
+			(uv_list[i].core ? uv_list[i].mhz*1000 : uv_list[i].mhz),
 			uv_list[i].min_mv,
 			uv_list[i].max_mv);
 			
@@ -809,8 +824,10 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 	int ret;
 	char size_cur[16];
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
+	struct clk *gpu_clk_3d = tegra_get_clock_by_name("3d");
 	/* find how many actual entries there are */
 	i = UV_mV_init();
+
 
 	for(i--; i >= 0; i--) {
 
@@ -820,14 +837,17 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 					uv_list[i].max_mv=uv_list[i].min_mv;
 				else
 					return -EINVAL;
-
 			/* TODO: need some robustness checks */
 			for (j=uv_list[i].min_pos; j<=uv_list[i].max_pos; ++j) {
-				if (j<(uv_list[i].min_pos+uv_list[i].max_pos)/2)
+				if (!uv_list[i].core)	{
 					user_mv_table[j] = uv_list[i].min_mv;
-				else
-					user_mv_table[j] = uv_list[i].max_mv;
-				pr_info("user mv tbl[%i]: %lu\n", j, user_mv_table[j]);
+					pr_info("user mv tbl[%i]: %lu\n", j, user_mv_table[j]);
+				}
+				else	{
+					core_user_millivolts[j] = uv_list[i].min_mv;
+					pr_info("core mv tbl[%i]: %lu\n", j, user_mv_table[j]);
+				}
+				
 			}
 
 			/* Non-standard sysfs interface: advance buf */
@@ -837,9 +857,33 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 	}
 	/* update dvfs table here */
 	cpu_clk_g->dvfs->millivolts = user_mv_table;
+	if (enable_gpu_voltage)
+		gpu_clk_3d->dvfs->millivolts = core_user_millivolts;
 
 	return count;
 }
+
+
+static ssize_t show_gpu_voltage			
+(struct cpufreq_policy *policy, char *buf)	
+{							
+	return sprintf(buf, "%u\n", enable_gpu_voltage);	
+}
+
+static ssize_t store_gpu_voltage			
+(struct cpufreq_policy *policy, char *buf, size_t count)	
+{							
+	unsigned int ret = -EINVAL;
+	unsigned int temp;							
+									
+	ret = sscanf(buf, "%u", &temp);			
+	if (ret != 1)							
+		return -EINVAL;		
+	if ( temp > 1 ) return -EINVAL;
+	enable_gpu_voltage=temp;
+	return count;
+}
+
 #endif
 
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
@@ -858,6 +902,7 @@ cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 #ifdef CONFIG_VOLTAGE_CONTROL
 cpufreq_freq_attr_rw(UV_mV_table);
+cpufreq_freq_attr_rw(gpu_voltage);
 #endif
 cpufreq_freq_attr_ro(policy_min_freq);
 cpufreq_freq_attr_ro(policy_max_freq);
@@ -875,9 +920,10 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
-#ifdef CONFIG_VOLTAGE_CONTROL
-&UV_mV_table.attr,
-#endif
+	#ifdef CONFIG_VOLTAGE_CONTROL
+	&UV_mV_table.attr,
+	&gpu_voltage.attr,
+	#endif
 	&policy_min_freq.attr,
 	&policy_max_freq.attr,
 	&scaling_max_freq_limit.attr,
