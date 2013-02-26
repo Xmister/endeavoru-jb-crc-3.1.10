@@ -158,9 +158,9 @@ extern int get_tamper_sf(void);
  *  S2W free swipe and stroke variables
  */
 // beyond this threshold the panel will not register to apps
-int s2w_register_threshold = 250;
+int s2w_register_threshold = 350;
 // power will toggle at this distance from start point
-int s2w_min_distance = 100;
+int s2w_min_distance = 400;
 // use either direction for on/off
 int s2w_allow_stroke = 1;
 int s2w_switch = 1;
