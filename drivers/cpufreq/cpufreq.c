@@ -815,13 +815,11 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 	for(i--; i >= 0; i--) {
 
 		if(uv_list[i].mhz != 0) {
-			ret = sscanf(buf, "%lu %lu", &(uv_list[i].min_mv), &(uv_list[i].max_mv));
-			if (ret != 2) {
+			ret = sscanf(buf, "%lu", &(uv_list[i].min_mv));
 				if (ret == 1)
 					uv_list[i].max_mv=uv_list[i].min_mv;
 				else
 					return -EINVAL;
-			}
 
 			/* TODO: need some robustness checks */
 			for (j=uv_list[i].min_pos; j<=uv_list[i].max_pos; ++j) {
