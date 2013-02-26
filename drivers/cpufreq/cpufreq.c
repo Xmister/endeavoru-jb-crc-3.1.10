@@ -808,10 +808,9 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 	i = UV_mV_init();
 	
 	for(i--; i >=0; i--) {	
-			out += sprintf(out, "%lumhz: %i %i mV\n",
+			out += sprintf(out, "%lumhz: %i mV\n",
 			(uv_list[i].core ? uv_list[i].mhz*1000 : uv_list[i].mhz),
-			uv_list[i].min_mv,
-			uv_list[i].max_mv);
+			uv_list[i].min_mv);
 			
 	}
 
