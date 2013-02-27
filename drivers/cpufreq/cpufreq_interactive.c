@@ -69,7 +69,7 @@ static struct mutex set_speed_lock;
 static unsigned long go_maxspeed_load;
 
 /* Base of exponential raise to max speed; if 0 - jump to maximum */
-#define DEFAULT_BOOST_FACTOR 0
+#define DEFAULT_BOOST_FACTOR 5
 static unsigned long boost_factor;
 
 /* Max frequency boost in Hz; if 0 - no max is enforced */
@@ -84,7 +84,7 @@ static unsigned long io_is_busy;
  * Targeted sustainable load relatively to current frequency.
  * If 0, target is set realtively to the max speed
  */
-#define DEFAULT_SUSTAIN_LOAD 95
+#define DEFAULT_SUSTAIN_LOAD 97
 static unsigned long sustain_load;
 
 /*
@@ -118,7 +118,7 @@ static unsigned long max_normal_freq;
 
 
 /* Defines to control mid-range frequencies */
-#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 80
+#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 95
 
 static unsigned long midrange_freq;
 static unsigned long midrange_go_maxspeed_load;
@@ -757,10 +757,10 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (atomic_inc_return(&active_count) > 1)
 			return 0;
 
-		rc = sysfs_create_group(cpufreq_global_kobject,
+		/*rc = sysfs_create_group(cpufreq_global_kobject,
 				&interactive_attr_group);
 		if (rc)
-			return rc;
+			return rc;*/
 
 		if (!policy->cpu)
 			rc = input_register_handler(&dbs_input_handler);
@@ -790,8 +790,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (atomic_dec_return(&active_count) > 0)
 			return 0;
 
-		sysfs_remove_group(cpufreq_global_kobject,
-				&interactive_attr_group);
+		/*sysfs_remove_group(cpufreq_global_kobject,
+				&interactive_attr_group);*/
 
 		break;
 
