@@ -59,7 +59,7 @@
 /*
  * This will replace TEGRA_MPDEC_DELAY in each case.
  */
-#define TEGRA_MPDEC_LPCPU_UPDELAY         450
+#define TEGRA_MPDEC_LPCPU_UPDELAY         80
 #define TEGRA_MPDEC_LPCPU_DOWNDELAY       750
 
 /*
