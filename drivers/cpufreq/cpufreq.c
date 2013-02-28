@@ -49,7 +49,7 @@ static DEFINE_PER_CPU(char[CPUFREQ_NAME_LEN], cpufreq_cpu_governor);
 #endif
 static DEFINE_SPINLOCK(cpufreq_driver_lock);
 
-static unsigned int enable_gpu_voltage=0;
+extern unsigned int enable_gpu_voltage;
 
 /*
  * cpu_policy_rwsem is a per CPU reader-writer semaphore designed to cure
@@ -745,6 +745,8 @@ static ssize_t store_scaling_max_freq
 
 extern int user_mv_table[MAX_DVFS_FREQS];
 extern int core_user_millivolts[MAX_DVFS_FREQS];
+extern int core_millivolts[MAX_DVFS_FREQS];
+extern const int core_def_millivolts[MAX_DVFS_FREQS];
 struct uv_mv_struct{
 	unsigned long mhz;
 	int min_mv;
@@ -825,10 +827,10 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
 	struct clk *gpu_clk_3d = tegra_get_clock_by_name("3d");
 	/* find how many actual entries there are */
-	i = UV_mV_init();
+	const int num = UV_mV_init();
 
 
-	for(i--; i >= 0; i--) {
+	for(i=num-1; i >= 0; i--) {
 
 		if(uv_list[i].mhz != 0) {
 			ret = sscanf(buf, "%lu", &(uv_list[i].min_mv));
@@ -856,8 +858,13 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 	}
 	/* update dvfs table here */
 	cpu_clk_g->dvfs->millivolts = user_mv_table;
-	if (enable_gpu_voltage)
-		gpu_clk_3d->dvfs->millivolts = core_user_millivolts;
+	if (enable_gpu_voltage) {
+		mutex_lock(&dvfs_lock);
+		for(i=num-1; i >= 0; i--) {
+			core_millivolts[i] = core_user_millivolts[i];
+		}
+		mutex_unlock(&dvfs_lock);
+	}
 
 	return count;
 }
@@ -873,13 +880,21 @@ static ssize_t store_gpu_voltage
 (struct cpufreq_policy *policy, char *buf, size_t count)	
 {							
 	unsigned int ret = -EINVAL;
-	unsigned int temp;							
+	unsigned int temp;
+	unsigned int i = 0;							
 									
 	ret = sscanf(buf, "%u", &temp);			
 	if (ret != 1)							
 		return -EINVAL;		
 	if ( temp > 1 ) return -EINVAL;
 	enable_gpu_voltage=temp;
+	if (!enable_gpu_voltage) { //Set back everything on disable
+		mutex_lock(&dvfs_lock);
+		for(i=MAX_DVFS_FREQS; i >= 0; i--) {
+			core_millivolts[i] = core_def_millivolts[i];
+		}
+		mutex_unlock(&dvfs_lock);
+	}
 	return count;
 }
 

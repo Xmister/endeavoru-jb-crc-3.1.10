@@ -29,16 +29,11 @@
 #include "board.h"
 #include "tegra3_emc.h"
 
-#ifdef CONFIG_VOLTAGE_CONTROL
-int user_mv_table[MAX_DVFS_FREQS] = {
-800, 825, 850, 875, 900, 912, 975, 1000, 1025, 1050, 1075, 1100, 1125, 1150, 1175, 1200, 1212, 1237};
-#endif
-
 #define CPU_MILLIVOLTS {\
-	750, 762, 775, 787, 800, 825, 837, 850, 862, 875, 887, 900, 912, 916, 925, 937, 950, 962, 975, 987, 1000, 1007, 1012, 1025, 1037, 1050, 1062, 1075, 1087, 1100, 1112, 1125, 1137, 1150, 1162, 1175, 1187, 1200, 1212, 1237};
+	750, 750, 750, 750, 800, 800, 800, 850, 850, 850, 850, 900, 900, 900, 900, 900, 900, 900, 975, 975, 1000, 1000, 1000, 1025, 1025, 1050, 1050, 1075, 1075, 1100, 1100, 1125, 1125, 1150, 1150, 1175, 1175, 1200, 1200, 1237};
 
 #define CORE_MILLIVOLTS {\
-	950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350};
+	950, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300};
 
 
 static bool tegra_dvfs_cpu_disabled;
@@ -52,8 +47,13 @@ static const int cpu_millivolts_aged[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
 static const unsigned int cpu_cold_offs_mhz[MAX_DVFS_FREQS] = {
 	 50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,  50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50,   50};
 
-static const int core_millivolts[MAX_DVFS_FREQS] = CORE_MILLIVOLTS;
+int core_millivolts[MAX_DVFS_FREQS] = CORE_MILLIVOLTS;
+#ifdef CONFIG_VOLTAGE_CONTROL
+int user_mv_table[MAX_DVFS_FREQS] = CPU_MILLIVOLTS;
 int core_user_millivolts[MAX_DVFS_FREQS] = CORE_MILLIVOLTS;
+const int core_def_millivolts[MAX_DVFS_FREQS] = CORE_MILLIVOLTS;
+unsigned int enable_gpu_voltage=0;
+#endif
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -65,18 +65,23 @@ static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 
 #define VDD_SAFE_STEP			100
 
+#define MIN_CPU_MV 725
+#define MAX_CPU_MV 1300
+#define MIN_CORE_MV 900
+#define MAX_CORE_MV 1400
+
 static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = 1250,
-	.min_millivolts = 725,
+	.max_millivolts = MAX_CPU_MV,
+	.min_millivolts = MIN_CPU_MV,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 };
 
 static struct dvfs_rail tegra3_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = 1350,
-	.min_millivolts = 950,
+	.max_millivolts = MAX_CORE_MV,
+	.min_millivolts = MIN_CORE_MV,
 	.step = VDD_SAFE_STEP,
 };
 
@@ -87,31 +92,35 @@ static struct dvfs_rail *tegra3_dvfs_rails[] = {
 
 static int tegra3_get_core_floor_mv(int cpu_mv)
 {
-	if (cpu_mv < 800)
-		return  core_millivolts[0];
-	if (cpu_mv < 900)
-		return core_millivolts[1];
-	if (cpu_mv < 1000)
-		return core_millivolts[3];
-	if ((tegra_cpu_speedo_id() < 2) ||
-	    (tegra_cpu_speedo_id() == 4) ||
-	    (tegra_cpu_speedo_id() == 7) ||
-	    (tegra_cpu_speedo_id() == 8))
-		return core_millivolts[5];
-	if (cpu_mv < 1100)
-		return core_millivolts[5];
-	if (cpu_mv <= 1250)
-		return core_millivolts[7];
-	BUG();
+		if ( enable_gpu_voltage ) return core_millivolts[0];
+		if (cpu_mv < 800)
+			return  core_millivolts[0];
+		if (cpu_mv < 900)
+			return core_millivolts[1];
+		if (cpu_mv < 1000)
+			return core_millivolts[3];
+		if ((tegra_cpu_speedo_id() < 2) ||
+		    (tegra_cpu_speedo_id() == 4) ||
+		    (tegra_cpu_speedo_id() == 7) ||
+		    (tegra_cpu_speedo_id() == 8))
+			return core_millivolts[5];
+		if (cpu_mv < 1100)
+			return core_millivolts[5];
+		if (cpu_mv <= 1250)
+			return core_millivolts[7];
+		BUG();
 }
 
 /* vdd_core must be >= min_level as a function of vdd_cpu */
 static int tegra3_dvfs_rel_vdd_cpu_vdd_core(struct dvfs_rail *vdd_cpu,
 	struct dvfs_rail *vdd_core)
 {
-	int core_floor = max(vdd_cpu->new_millivolts, vdd_cpu->millivolts);
-	core_floor = tegra3_get_core_floor_mv(core_floor);
-	return max(vdd_core->new_millivolts, core_floor);
+	if ( enable_gpu_voltage ) return vdd_core->new_millivolts;
+	else {
+		int core_floor = max(vdd_cpu->new_millivolts, vdd_cpu->millivolts);
+		core_floor = tegra3_get_core_floor_mv(core_floor);
+		return max(vdd_core->new_millivolts, core_floor);
+	}
 }
 
 /* vdd_cpu must be >= (vdd_core - cpu_below_core) */
@@ -122,10 +131,13 @@ static int tegra3_dvfs_rel_vdd_core_vdd_cpu(struct dvfs_rail *vdd_core,
 
 	if (vdd_cpu->new_millivolts == 0)
 		return 0; /* If G CPU is off, core relations can be ignored */
-
-	cpu_floor = max(vdd_core->new_millivolts, vdd_core->millivolts) -
-		cpu_below_core;
-	return max(vdd_cpu->new_millivolts, cpu_floor);
+	
+	if ( enable_gpu_voltage ) return vdd_cpu->new_millivolts;
+	else {
+		cpu_floor = max(vdd_core->new_millivolts, vdd_core->millivolts) -
+			cpu_below_core;
+		return max(vdd_cpu->new_millivolts, cpu_floor);
+	}
 }
 
 static struct dvfs_relationship tegra3_dvfs_relationships[] = {
@@ -173,12 +185,12 @@ static struct dvfs cpu_dvfs_table[] = {
 	CPU_DVFS("cpu_g",  3, 1, MHZ,   1,   1,   1,   1, 480, 480, 480, 650, 650, 650, 650,  780,  780,  780,  780,  780,  780,  780,  990,  990, 1040, 1040, 1040, 1100, 1100, 1200, 1200, 1250, 1250, 1300, 1300, 1330, 1330, 1400),
 	CPU_DVFS("cpu_g",  3, 2, MHZ,   1,   1,   1,   1, 520, 520, 520, 700, 700, 700, 700,  860,  860,  860,  860,  860,  860,  860, 1050, 1050, 1150, 1150, 1150, 1200, 1200, 1280, 1280, 1300, 1300, 1350, 1350, 1400),
 	CPU_DVFS("cpu_g",  3, 3, MHZ,   1,   1,   1,   1, 550, 550, 550, 770, 770, 770, 770,  910,  910,  910,  910,  910,  910,  910, 1150, 1150, 1230, 1230, 1230, 1280, 1280, 1300, 1300, 1350, 1350, 1400),
-
+	/*One X-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 	CPU_DVFS("cpu_g",  4, 0, MHZ,   1,   1,   1,   1, 460, 460, 460, 550, 550, 550, 550,  680,  680,  680,  680,  680,  680,  680,  820,  820,  970,  970,  970, 1040, 1040, 1080, 1080, 1150, 1150, 1200, 1200, 1240, 1240, 1280, 1280, 1320, 1320, 1360, 1360, 1500),
 	CPU_DVFS("cpu_g",  4, 1, MHZ,   1,   1,   1,   1, 480, 480, 480, 650, 650, 650, 650,  780,  780,  780,  780,  780,  780,  780,  990,  990, 1040, 1040, 1040, 1100, 1100, 1200, 1200, 1250, 1250, 1300, 1300, 1330, 1330, 1360, 1360, 1400, 1400, 1500),
 	CPU_DVFS("cpu_g",  4, 2, MHZ,   1,   1,   1,   1, 520, 520, 520, 700, 700, 700, 700,  860,  860,  860,  860,  860,  860,  860, 1050, 1050, 1150, 1150, 1150, 1200, 1200, 1280, 1280, 1300, 1300, 1340, 1340, 1380, 1380, 1500),
 	CPU_DVFS("cpu_g",  4, 3, MHZ,   1,   1,   1,   1, 550, 550, 550, 770, 770, 770, 770,  910,  910,  910,  910,  910,  910,  910, 1150, 1150, 1230, 1230, 1230, 1280, 1280, 1330, 1330, 1370, 1370, 1400, 1400, 1500),
-
+	/*One X-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 	CPU_DVFS("cpu_g",  5, 3, MHZ,   1,   1,   1,   1, 550, 550, 550, 770, 770, 770, 770,  910,  910,  910,  910,  910,  910,  910, 1150, 1150, 1230, 1230, 1230, 1280, 1280, 1330, 1330, 1370, 1370, 1400, 1400, 1470, 1470, 1500, 1500, 1500, 1500, 1540, 1540, 1700),
 	CPU_DVFS("cpu_g",  5, 4, MHZ,   1,   1,   1,   1, 550, 550, 550, 770, 770, 770, 770,  940,  940,  940,  940,  940,  940,  940, 1160, 1160, 1240, 1240, 1240, 1280, 1280, 1360, 1360, 1390, 1390, 1470, 1470, 1500, 1500, 1520, 1520, 1520, 1520, 1590, 1700),
 
