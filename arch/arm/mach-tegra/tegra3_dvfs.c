@@ -33,7 +33,7 @@
 	750, 750, 750, 750, 800, 800, 800, 850, 850, 850, 850, 900, 900, 900, 900, 900, 900, 900, 975, 975, 1000, 1000, 1000, 1025, 1025, 1050, 1050, 1075, 1075, 1100, 1100, 1125, 1125, 1150, 1150, 1175, 1175, 1200, 1200, 1237};
 
 #define CORE_MILLIVOLTS {\
-	950, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300};
+	950, 1000, 1000, 1050, 1100, 1200, 1250, 1250, 1300};
 
 
 static bool tegra_dvfs_cpu_disabled;
@@ -92,7 +92,6 @@ static struct dvfs_rail *tegra3_dvfs_rails[] = {
 
 static int tegra3_get_core_floor_mv(int cpu_mv)
 {
-		if ( enable_gpu_voltage ) return core_millivolts[0];
 		if (cpu_mv < 800)
 			return  core_millivolts[0];
 		if (cpu_mv < 900)
@@ -111,11 +110,17 @@ static int tegra3_get_core_floor_mv(int cpu_mv)
 		BUG();
 }
 
+static int tegra3_get_core_floor_mv2(int cpu_mv, int core_mv)
+{
+		if (core_mv < cpu_mv) return cpu_mv;
+		return core_mv;
+}
+
 /* vdd_core must be >= min_level as a function of vdd_cpu */
 static int tegra3_dvfs_rel_vdd_cpu_vdd_core(struct dvfs_rail *vdd_cpu,
 	struct dvfs_rail *vdd_core)
 {
-	if ( enable_gpu_voltage ) return vdd_core->new_millivolts;
+	if ( enable_gpu_voltage ) return tegra3_get_core_floor_mv2(vdd_cpu->new_millivolts, vdd_core->new_millivolts);
 	else {
 		int core_floor = max(vdd_cpu->new_millivolts, vdd_cpu->millivolts);
 		core_floor = tegra3_get_core_floor_mv(core_floor);
