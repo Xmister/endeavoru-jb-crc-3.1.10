@@ -896,7 +896,7 @@ static ssize_t store_gpu_oc(struct cpufreq_policy *policy, const char *buf, size
 	struct clk *three_d2 = tegra_get_clock_by_name("3d2");
 	struct clk *se = tegra_get_clock_by_name("se");
 	struct clk *host1x = tegra_get_clock_by_name("host1x");
-	struct clk *cbus = tegra_get_clock_by_name("cbus");
+	//struct clk *cbus = tegra_get_clock_by_name("cbus");
 	struct clk *pll_c = tegra_get_clock_by_name("pll_c");
 
 	const int array_size = vde->dvfs->num_freqs;
@@ -919,7 +919,7 @@ static ssize_t store_gpu_oc(struct cpufreq_policy *policy, const char *buf, size
 			three_d2->max_rate = gpu_freq*1000000;
 			se->max_rate = gpu_freq*1000000;
 			host1x->max_rate = DIV_ROUND_UP((gpu_freq*1000000),2);
-			cbus->max_rate = gpu_freq*1000000;
+			//cbus->max_rate = gpu_freq*1000000;
 			pll_c->max_rate = (gpu_freq*1000000)*2;
 			pr_info("Set clk->max_rate. %d\n", i);
 		}
@@ -931,7 +931,7 @@ static ssize_t store_gpu_oc(struct cpufreq_policy *policy, const char *buf, size
 		three_d->dvfs->freqs[i] = gpu_freq*1000000;
 		three_d2->dvfs->freqs[i] = gpu_freq*1000000;
 		se->dvfs->freqs[i] = gpu_freq*1000000;
-		cbus->dvfs->freqs[i] = gpu_freq*1000000;
+		//cbus->dvfs->freqs[i] = gpu_freq*1000000;
 		if (i >= 6)
 			pll_c->dvfs->freqs[i] = (gpu_freq*1000000)*2;
 			
