@@ -1630,6 +1630,7 @@ fast_charge_store(struct device *dev,
         fast_charge = value;
         BATT_LOG("set fast_charge %d", fast_charge);
 	usb_status_notifier_func(CONNECT_TYPE_USB);
+	tps80032_charger_set_ctrl(POWER_SUPPLY_ENABLE_FAST_CHARGE);
 	BATT_LOG("Reinit usb_status");
     }
     else
