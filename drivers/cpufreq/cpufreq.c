@@ -749,46 +749,41 @@ extern int core_millivolts[MAX_DVFS_FREQS];
 extern const int core_def_millivolts[MAX_DVFS_FREQS];
 struct uv_mv_struct{
 	unsigned long mhz;
-	int min_mv;
-	int max_mv;
+	int mv_table[MAX_DVFS_FREQS];
 	int min_pos;
 	int max_pos;
 	int core;
+	
 };
 static struct uv_mv_struct uv_list[MAX_DVFS_FREQS*2];
 
 static unsigned int get_mv_table_for_name(const char* cpu_name, const int core, const int pos) {
-	int i = 0, j=pos;
+	int i=0, sum = 0, j=pos, k=0, l=0;
 	struct clk *cpu_clk_g = tegra_get_clock_by_name(cpu_name);
 
 	/* find how many actual entries there are */
-	i = cpu_clk_g->dvfs->num_freqs;
-	if ( i-- == 0 ) return 0;
-	uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i];
-	uv_list[j].max_mv=cpu_clk_g->dvfs->millivolts[i];
-	uv_list[j].mhz=cpu_clk_g->dvfs->freqs[i]/1000000;
-	uv_list[j].min_pos=i;
-	uv_list[j].max_pos=i;
-	uv_list[j].core=core;
-	for(i--; i >=0; i--) {
-		if (cpu_clk_g->dvfs->freqs[i]/1000000 != cpu_clk_g->dvfs->freqs[i+1]/1000000) {	
-			if (uv_list[j].min_mv > cpu_clk_g->dvfs->millivolts[i+1]) uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i+1];
-			if (uv_list[j].max_mv < cpu_clk_g->dvfs->millivolts[i+1]) uv_list[j].max_mv=cpu_clk_g->dvfs->millivolts[i+1];
-			uv_list[j].min_pos=i+1;
-			j++;
-			uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i];
-			uv_list[j].max_mv=cpu_clk_g->dvfs->millivolts[i];
-			uv_list[j].mhz=cpu_clk_g->dvfs->freqs[i]/1000000;
-			uv_list[j].min_pos=i;
-			uv_list[j].max_pos=i;
-			uv_list[j].core=core;
-		} else {
-			if ( cpu_clk_g->dvfs->millivolts[i] < uv_list[j].min_mv ) uv_list[j].min_mv=cpu_clk_g->dvfs->millivolts[i];
-			else if ( cpu_clk_g->dvfs->millivolts[i] > uv_list[j].max_mv ) uv_list[j].max_mv=cpu_clk_g->dvfs->millivolts[i];
-			uv_list[j].min_pos=i;
-		}
+	sum = cpu_clk_g->dvfs->num_freqs;
+	if ( sum == 0 ) return 0;
+		j=j-1;
+		for(i=0; i < sum; i++) {
+			if (i == 0 || cpu_clk_g->dvfs->freqs[i]/1000000 != cpu_clk_g->dvfs->freqs[i-1]/1000000) {
+				pr_info("default voltages@%lu: ",uv_list[j].mhz);
+				for (l=0; l<=k; l++)
+					pr_info("[%i]:%lu ", l, uv_list[j].mv_table[l]);
+				pr_info("\n");	
+				j++;
+				k=0;
+				uv_list[j].mv_table[k]=cpu_clk_g->dvfs->millivolts[i];
+				uv_list[j].mhz=cpu_clk_g->dvfs->freqs[i]/1000000;
+				uv_list[j].min_pos=i;
+				uv_list[j].max_pos=i;
+				uv_list[j].core=core;
+			} else {
+				uv_list[j].mv_table[++k]=cpu_clk_g->dvfs->millivolts[i];
+				uv_list[j].max_pos=i;
+			}
 			
-	}
+		}
 
 return j+1;
 }
@@ -804,15 +799,15 @@ static unsigned int UV_mV_init() {
 
 static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
-	int i = 0;
+	int num, i = 0;
 	char *out = buf;
 	/* find how many actual entries there are */
-	i = UV_mV_init();
+	num = UV_mV_init();
 	
-	for(i--; i >=0; i--) {	
+	for(i=0; i < num; i++) {	
 			out += sprintf(out, "%lumhz: %i mV\n",
 			(uv_list[i].core ? uv_list[i].mhz*1000 : uv_list[i].mhz),
-			uv_list[i].min_mv);
+			uv_list[i].mv_table[0]);
 			
 	}
 
@@ -823,6 +818,8 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 {
 	int i = 0, j=0;
 	int ret;
+	unsigned long temp;
+	int uv;
 	char size_cur[16];
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
 	struct clk *gpu_clk_3d = tegra_get_clock_by_name("3d");
@@ -830,23 +827,24 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 	const int num = UV_mV_init();
 
 
-	for(i=num-1; i >= 0; i--) {
+	for(i=0; i < num; i++) {
 
 		if(uv_list[i].mhz != 0) {
-			ret = sscanf(buf, "%lu", &(uv_list[i].min_mv));
+			ret = sscanf(buf, "%lu", &(temp));
 				if (ret == 1)
-					uv_list[i].max_mv=uv_list[i].min_mv;
+					uv=uv_list[i].mv_table[0]-temp; //This is the UV value
 				else
 					return -EINVAL;
 			/* TODO: need some robustness checks */
 			for (j=uv_list[i].min_pos; j<=uv_list[i].max_pos; ++j) {
+				temp=uv_list[i].mv_table[j-uv_list[i].min_pos]-uv;
 				if (!uv_list[i].core)	{
-					user_mv_table[j] = uv_list[i].min_mv;
-					pr_info("user mv tbl[%i]: %lu\n", j, user_mv_table[j]);
+					user_mv_table[j] = temp;
+					pr_info("user mv tbl@%luMHz[%i]: %lu\n",uv_list[i].mhz, j, user_mv_table[j]);
 				}
 				else	{
-					core_user_millivolts[j] = uv_list[i].min_mv;
-					pr_info("core mv tbl[%i]: %lu\n", j, user_mv_table[j]);
+					core_user_millivolts[j] = temp;
+					pr_info("core mv tbl@%luMHz[%i]: %lu\n",uv_list[i].mhz, j, core_user_millivolts[j]);
 				}
 				
 			}
@@ -878,7 +876,7 @@ static ssize_t show_gpu_oc(struct cpufreq_policy *policy, char *buf)
 	if (i == 0)
 		return -EINVAL;
 
-	for (i--; i >= 1; i--)
+	for (i--; i >= 0; i--)
 		c += sprintf(c, "%lu ", gpu->dvfs->freqs[i]/1000000);
 
 	return c - buf;
@@ -908,7 +906,7 @@ static ssize_t store_gpu_oc(struct cpufreq_policy *policy, const char *buf, size
 	if (i == 0) 
 		return -EINVAL;
 
-	for (i--; i >= 1; i--) {
+	for (i--; i >= 0; i--) {
 		ret = sscanf(buf, "%lu", &gpu_freq);
 
 		mutex_lock(&dvfs_lock);
