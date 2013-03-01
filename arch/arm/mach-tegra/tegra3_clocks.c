@@ -4960,15 +4960,6 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	return NULL;
 }
 
-static unsigned long emc_max_rate_threshold = 1100000;
-module_param(emc_max_rate_threshold, ulong, 0644);
-
-static unsigned long emc_balance_threshold = 640000;
-module_param(emc_balance_threshold, ulong, 0644);
-
-static unsigned long emc_balance_rate = 437000000;
-module_param(emc_balance_rate, ulong, 0644);
-
 /* On DDR3 platforms there is an implicit dependency in this mapping: when cpu
  * exceeds max dvfs level for LP CPU clock at TEGRA_EMC_BRIDGE_MVOLTS_MIN, the
  * respective emc rate should be above TEGRA_EMC_BRIDGE_RATE_MIN
@@ -4984,12 +4975,10 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 
 	/* Vote on memory bus frequency based on cpu frequency;
 	   cpu rate is in kHz, emc rate is in Hz */
-	if (cpu_rate >= emc_max_rate_threshold)
-		return emc_max_rate;	/* cpu >= 1100 MHz, emc max */
-    else if (emc_balance_threshold && cpu_rate >= emc_balance_threshold)
-        return emc_balance_rate;/* cpu >= 640 MHz, 437 MHz */
+	if (cpu_rate >= 750000)
+		return emc_max_rate;	/* cpu >= 750 MHz, emc max */
 	else if (cpu_rate >= 450000)
-		return emc_max_rate/2;	/* cpu >= 450 MHz, emc max/2 */
+		return emc_max_rate/2;	/* cpu >= 500 MHz, emc max/2 */
 	else if (cpu_rate >= 250000)
 		return 100000000;	/* cpu >= 250 MHz, emc 100 MHz */
 	else
