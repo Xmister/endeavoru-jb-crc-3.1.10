@@ -1654,17 +1654,6 @@ fast_charge_store(struct device *dev,
 {
     int value;
 
-    value = ((int) simple_strtoul(buf, NULL, 10));
-    if(value == 0 || value == 1){
-        fast_charge = value;
-        BATT_LOG("set fast_charge %d", fast_charge);
-	usb_status_notifier_func(CONNECT_TYPE_USB);
-	tps80032_charger_set_ctrl(POWER_SUPPLY_ENABLE_FAST_CHARGE);
-	BATT_LOG("Reinit usb_status");
-    }
-    else
-        return -EINVAL;
-
 	value = ((int) simple_strtoul(buf, NULL, 10));
 	if(value == 0 || value == 1){
 		if(fast_charge != value){
