@@ -792,6 +792,25 @@ static ssize_t store_usb_disable_setting(struct device *dev,
 	return count;
 }
 
+/* Check if USB function is available for user process */
+static ssize_t show_is_usb_denied(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned length;
+	int deny = 0;
+
+	if (usb_autobot_mode()) {
+		/* In HTC mode, USB function change by
+		 * user space should be denied.
+		 */
+		deny = 1;
+	}
+
+	length = sprintf(buf, "%d\n", deny);
+	USB_INFO("%s: %s\n", __func__, buf);
+	return length;
+}
+
 /* show current os type for mac or non-mac */
 static ssize_t show_os_type(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -829,6 +848,7 @@ static DEVICE_ATTR(usb_perflock_setting, 0664,
 		show_usb_perflock_setting, store_usb_perflock_setting);
 static DEVICE_ATTR(usb_disable, 0664,
 		NULL, store_usb_disable_setting);
+static DEVICE_ATTR(usb_denied, 0444, show_is_usb_denied, NULL);
 static DEVICE_ATTR(os_type, 0444, show_os_type, NULL);
 static DEVICE_ATTR(ats, 0444, show_ats, NULL);
 
@@ -842,6 +862,7 @@ static struct attribute *android_htc_usb_attributes[] = {
 	/* &dev_attr_usb_phy_setting.attr, */
 	&dev_attr_usb_perflock_setting.attr,
 	&dev_attr_usb_disable.attr,
+	&dev_attr_usb_denied.attr,
 	&dev_attr_os_type.attr,
 	&dev_attr_ats.attr,
 #if (defined(CONFIG_USB_OTG) && defined(CONFIG_USB_OTG_HOST))
