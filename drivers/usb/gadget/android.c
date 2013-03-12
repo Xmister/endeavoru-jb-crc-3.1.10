@@ -1321,15 +1321,9 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		if (config->fsg.nluns > FSG_MAX_LUNS)
 			config->fsg.nluns = FSG_MAX_LUNS;
 		for (i = 0; i < config->fsg.nluns; i++) {
-			if (i==0) {
-				config->fsg.luns[i].cdrom = 1;
-				config->fsg.luns[i].removable = 1;
-				config->fsg.luns[i].ro = 1;
-			} else {
 				config->fsg.luns[i].cdrom = 0;
 				config->fsg.luns[i].removable = 1;
 				config->fsg.luns[i].ro = 0;
-			}
 		}
 	} else {
 		/* default value */
