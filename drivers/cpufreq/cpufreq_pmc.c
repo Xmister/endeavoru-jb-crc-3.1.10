@@ -60,13 +60,13 @@ static unsigned int ramp_down_step;
 /*
  * CPU freq will be increased if measured load > max_cpu_load;
  */
-#define DEFAULT_MAX_CPU_LOAD 80
+#define DEFAULT_MAX_CPU_LOAD 75
 static unsigned long max_cpu_load;
 
 /*
  * CPU freq will be decreased if measured load < min_cpu_load;
  */
-#define DEFAULT_MIN_CPU_LOAD 45
+#define DEFAULT_MIN_CPU_LOAD 40
 static unsigned long min_cpu_load;
 
 /*
@@ -83,18 +83,18 @@ static unsigned long up_rate_us;
 #define DEFAULT_DOWN_RATE_US 40000
 static unsigned long down_rate_us;
 
-#define DEFAULT_SAMPLING_RATE 50000
+#define DEFAULT_SAMPLING_RATE 30000
 static unsigned int sampling_rate;
 
 #define DEFAULT_INPUT_BOOST_DURATION 80000000
 static unsigned int input_boost_duration;
 
-static unsigned int touch_poke_freq = 1300000;
+static unsigned int touch_poke_freq = 700000;
 static bool touch_poke = true;
 
 static bool sync_cpu_downscale = false;
 
-static unsigned int boost_freq = 1300000;
+static unsigned int boost_freq = 700000;
 static bool boost = true;
 static unsigned int boost_duration = 0;
 
@@ -161,15 +161,15 @@ static unsigned int cur_boost_freq = 0;
 static unsigned int cur_boost_duration = 0;
 static bool boost_running = false;
 
-static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
+static int cpufreq_governor_pmc(struct cpufreq_policy *policy,
 		unsigned int event);
 
-#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_PMC
 static
 #endif
-struct cpufreq_governor cpufreq_gov_smartmax = {
-	.name = "smartmax",
-	.governor = cpufreq_governor_smartmax,
+struct cpufreq_governor cpufreq_gov_pmc = {
+	.name = "pmc",
+	.governor = cpufreq_governor_pmc,
 	.max_transition_latency = 9000000,
 	.owner = THIS_MODULE,
 };
@@ -858,7 +858,7 @@ static struct attribute * smartmax_attributes[] = {
 
 static struct attribute_group smartmax_attr_group = {
 	.attrs = smartmax_attributes,
-	.name = "smartmax",
+	.name = "pmc",
 };
 
 static int cpufreq_smartmax_boost_task (
@@ -995,7 +995,7 @@ static struct input_handler dbs_input_handler = {
 	.id_table       = dbs_ids,
 };
 
-static int cpufreq_governor_smartmax(struct cpufreq_policy *new_policy,
+static int cpufreq_governor_pmc(struct cpufreq_policy *new_policy,
 		unsigned int event)
 {
 	unsigned int cpu = new_policy->cpu;
@@ -1124,7 +1124,7 @@ static int __init cpufreq_smartmax_init(void)
 		this_smartmax->cur_cpu_load = 0;
 	}
 	
-	return cpufreq_register_governor(&cpufreq_gov_smartmax);
+	return cpufreq_register_governor(&cpufreq_gov_pmc);
 }
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
@@ -1135,7 +1135,7 @@ module_init(cpufreq_smartmax_init);
 
 static void __exit cpufreq_smartmax_exit(void)
 {
-	cpufreq_unregister_governor(&cpufreq_gov_smartmax);
+	cpufreq_unregister_governor(&cpufreq_gov_pmc);
 }
 
 module_exit(cpufreq_smartmax_exit);

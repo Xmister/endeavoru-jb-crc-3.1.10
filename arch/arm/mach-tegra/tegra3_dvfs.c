@@ -65,11 +65,6 @@ static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 
 #define VDD_SAFE_STEP			100
 
-#define MIN_CPU_MV 725
-#define MAX_CPU_MV 1300
-#define MIN_CORE_MV 900
-#define MAX_CORE_MV 1400
-
 static struct dvfs_rail tegra3_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = MAX_CPU_MV,

@@ -1,0 +1,5 @@
+
+#
+# Xmister
+#
+CONFIG_BUILD_FOR_SENSE=y

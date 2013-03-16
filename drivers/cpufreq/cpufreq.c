@@ -683,7 +683,7 @@ static ssize_t store_scaling_max_freq_limit(struct cpufreq_policy *policy,
 		ret = __cpufreq_set_policy(policy, &new_policy);
 		policy->user_policy.max = new_policy.max;
 		if (!ret)
-			pr_info("maxwen:store_scaling_max_freq_limit set policy->max of cpu %d to %d - ok\n", cpu, new_policy.max);
+			//pr_info("maxwen:store_scaling_max_freq_limit set policy->max of cpu %d to %d - ok\n", cpu, new_policy.max);
 		
 		cpufreq_cpu_put(policy);
 	}
@@ -721,8 +721,8 @@ static ssize_t store_scaling_max_freq
 	ret = __cpufreq_set_policy(policy, &new_policy);		
 	policy->user_policy.max = new_policy.max;	
 
-	htc_set_cpu_user_cap(new_policy.max);	
-	pr_info("Xmister: Set User cap to %u\n", new_policy.max);
+	/*htc_set_cpu_user_cap(new_policy.max);	
+	pr_info("Xmister: Set User cap to %u\n", new_policy.max);*/
 
 	temp=kmalloc(sizeof(char)*(strlen(buf)*4+4), GFP_KERNEL);
 	if ( temp ) {
@@ -766,11 +766,8 @@ static unsigned int get_mv_table_for_name(const char* cpu_name, const int core, 
 	if ( sum == 0 ) return 0;
 		j=j-1;
 		for(i=0; i < sum; i++) {
-			if (i == 0 || cpu_clk_g->dvfs->freqs[i]/1000000 != cpu_clk_g->dvfs->freqs[i-1]/1000000) {
-				pr_info("default voltages@%lu: ",uv_list[j].mhz);
-				for (l=0; l<=k; l++)
-					pr_info("[%i]:%lu ", l, uv_list[j].mv_table[l]);
-				pr_info("\n");	
+			if (i == 0 || cpu_clk_g->dvfs->freqs[i] != cpu_clk_g->dvfs->freqs[i-1]) {
+				//pr_info("default voltages: %lu MHz @ %lu mV\n",cpu_clk_g->dvfs->freqs[i],cpu_clk_g->dvfs->millivolts[i]);
 				j++;
 				k=0;
 				uv_list[j].mv_table[k]=cpu_clk_g->dvfs->millivolts[i];
@@ -782,6 +779,10 @@ static unsigned int get_mv_table_for_name(const char* cpu_name, const int core, 
 				uv_list[j].mv_table[++k]=cpu_clk_g->dvfs->millivolts[i];
 				uv_list[j].max_pos=i;
 			}
+			//pr_info("uv_list[%d]: %lu MHz: ",j,uv_list[j].mhz);
+			//for (l=0; l<=k; l++)
+				//pr_info("\t[%i]:%lu mV", l, uv_list[j].mv_table[l]);
+			//pr_info("\n");
 			
 		}
 
@@ -818,31 +819,37 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 {
 	int i = 0, j=0;
 	int ret;
-	unsigned long temp;
+	long temp;
 	int uv;
 	char size_cur[16];
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
-	struct clk *gpu_clk_3d = tegra_get_clock_by_name("3d");
 	/* find how many actual entries there are */
 	const int num = UV_mV_init();
 
 
 	for(i=0; i < num; i++) {
-
-		if(uv_list[i].mhz != 0) {
-			ret = sscanf(buf, "%lu", &(temp));
-				if (ret == 1)
+			ret = sscanf(buf, "%ld", &(temp));
+				if (ret == 1) {
 					uv=uv_list[i].mv_table[0]-temp; //This is the UV value
-				else
+					//pr_info("Xmister: UV value: %d!\n",uv);
+				}
+				else	{
+					//pr_info("Xmister: UV Interface error!\n");
 					return -EINVAL;
+				}
+			//pr_info("Xmister: for %d -> %d!\n",uv_list[i].min_pos,uv_list[i].max_pos);
 			/* TODO: need some robustness checks */
 			for (j=uv_list[i].min_pos; j<=uv_list[i].max_pos; ++j) {
 				temp=uv_list[i].mv_table[j-uv_list[i].min_pos]-uv;
 				if (!uv_list[i].core)	{
+					if ( temp < MIN_CPU_MV ) temp = MIN_CPU_MV;
+					else if ( temp > MAX_CPU_MV ) temp = MAX_CPU_MV;
 					user_mv_table[j] = temp;
 					pr_info("user mv tbl@%luMHz[%i]: %lu\n",uv_list[i].mhz, j, user_mv_table[j]);
 				}
 				else	{
+					if ( temp < MIN_CORE_MV ) temp = MIN_CORE_MV;
+					else if ( temp > MAX_CORE_MV ) temp = MAX_CORE_MV;
 					core_user_millivolts[j] = temp;
 					pr_info("core mv tbl@%luMHz[%i]: %lu\n",uv_list[i].mhz, j, core_user_millivolts[j]);
 				}
@@ -852,7 +859,6 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 			/* Non-standard sysfs interface: advance buf */
 			ret = sscanf(buf, "%s", size_cur);
 			buf += (strlen(size_cur)+1);
-		}
 	}
 	/* update dvfs table here */
 	cpu_clk_g->dvfs->millivolts = user_mv_table;
@@ -876,7 +882,7 @@ static ssize_t show_gpu_oc(struct cpufreq_policy *policy, char *buf)
 	if (i == 0)
 		return -EINVAL;
 
-	for (i--; i >= 0; i--)
+	for (i--; i >= 1; i--)
 		c += sprintf(c, "%lu ", gpu->dvfs->freqs[i]/1000000);
 
 	return c - buf;
@@ -889,14 +895,14 @@ static ssize_t store_gpu_oc(struct cpufreq_policy *policy, const char *buf, size
 
 	//all the tables that need to be updated with the new frequencies
 	//struct clk *vde = tegra_get_clock_by_name("vde");
-	//struct clk *mpe = tegra_get_clock_by_name("mpe");
+	struct clk *mpe = tegra_get_clock_by_name("mpe");
 	//struct clk *two_d = tegra_get_clock_by_name("2d");
-	//struct clk *epp = tegra_get_clock_by_name("epp");
+	struct clk *epp = tegra_get_clock_by_name("epp");
 	struct clk *three_d = tegra_get_clock_by_name("3d");
 	struct clk *three_d2 = tegra_get_clock_by_name("3d2");
-	//struct clk *se = tegra_get_clock_by_name("se");
+	struct clk *se = tegra_get_clock_by_name("se");
 	//struct clk *host1x = tegra_get_clock_by_name("host1x");
-	//struct clk *cbus = tegra_get_clock_by_name("cbus");
+	struct clk *cbus = tegra_get_clock_by_name("cbus");
 	struct clk *pll_c = tegra_get_clock_by_name("pll_c");
 
 	const int array_size = three_d->dvfs->num_freqs;
@@ -906,34 +912,170 @@ static ssize_t store_gpu_oc(struct cpufreq_policy *policy, const char *buf, size
 	if (i == 0) 
 		return -EINVAL;
 
-	for (i--; i >= 0; i--) {
+	for (i--; i >= 1; i--) { //[7]-[1]
 		ret = sscanf(buf, "%lu", &gpu_freq);
 
 		mutex_lock(&dvfs_lock);
 		if (i == array_size-1) {
 			//vde->max_rate = gpu_freq*1000000;
-			//mpe->max_rate = gpu_freq*1000000;
+			mpe->max_rate = gpu_freq*1000000;
 			//two_d->max_rate = gpu_freq*1000000;
-			//epp->max_rate = gpu_freq*1000000;
+			epp->max_rate = gpu_freq*1000000;
 			three_d->max_rate = gpu_freq*1000000;
 			three_d2->max_rate = gpu_freq*1000000;
-			//se->max_rate = gpu_freq*1000000;
+			se->max_rate = gpu_freq*1000000;
 			//host1x->max_rate = DIV_ROUND_UP((gpu_freq*1000000),2);
-			//cbus->max_rate = gpu_freq*1000000;
+			cbus->max_rate = gpu_freq*1000000;
 			pll_c->max_rate = (gpu_freq*1000000)*2;
-			pr_info("Set clk->max_rate. %d\n", i);
+			pr_info("Set pll clk->max_rate. %d\n", i);
 		}
 
 		//vde->dvfs->freqs[i] = gpu_freq*1000000;
-		//mpe->dvfs->freqs[i] = gpu_freq*1000000;
+		mpe->dvfs->freqs[i] = gpu_freq*1000000;
 		//two_d->dvfs->freqs[i] = gpu_freq*1000000;
-		//epp->dvfs->freqs[i] = gpu_freq*1000000;
+		epp->dvfs->freqs[i] = gpu_freq*1000000;
 		three_d->dvfs->freqs[i] = gpu_freq*1000000;
 		three_d2->dvfs->freqs[i] = gpu_freq*1000000;
-		//se->dvfs->freqs[i] = gpu_freq*1000000;
-		//cbus->dvfs->freqs[i] = gpu_freq*1000000;
+		se->dvfs->freqs[i] = gpu_freq*1000000;
+		//host1x->dvfs->freqs[i] = DIV_ROUND_UP((gpu_freq*1000000),2);
+		cbus->dvfs->freqs[i] = gpu_freq*1000000;
 		if (i >= 6)
 			pll_c->dvfs->freqs[i] = (gpu_freq*1000000)*2;
+			
+		mutex_unlock(&dvfs_lock);
+
+		ret = sscanf(buf, "%s", cur_size);
+
+		if (ret == 0)
+			return 0;
+
+		buf += (strlen(cur_size) + 1);
+	}
+
+	return count;
+}
+
+static ssize_t show_two_d_oc(struct cpufreq_policy *policy, char *buf)
+{
+	char *c = buf;
+	struct clk *gpu = tegra_get_clock_by_name("2d");
+	int i = gpu->dvfs->num_freqs;
+
+	if (i == 0)
+		return -EINVAL;
+
+	for (i--; i >= 1; i--)
+		c += sprintf(c, "%lu ", gpu->dvfs->freqs[i]/1000000);
+
+	return c - buf;
+}
+
+static ssize_t store_two_d_oc(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long gpu_freq;
+
+	//all the tables that need to be updated with the new frequencies
+	struct clk *vde = tegra_get_clock_by_name("vde");
+	//struct clk *mpe = tegra_get_clock_by_name("mpe");
+	struct clk *two_d = tegra_get_clock_by_name("2d");
+	//struct clk *epp = tegra_get_clock_by_name("epp");
+	//struct clk *three_d = tegra_get_clock_by_name("3d");
+	//struct clk *three_d2 = tegra_get_clock_by_name("3d2");
+	//struct clk *se = tegra_get_clock_by_name("se");
+	//struct clk *host1x = tegra_get_clock_by_name("host1x");
+	//struct clk *cbus = tegra_get_clock_by_name("cbus");
+	//struct clk *pll_c = tegra_get_clock_by_name("pll_c");
+
+	const int array_size = two_d->dvfs->num_freqs;
+	char cur_size[array_size];
+	int i = array_size;
+
+	if (i == 0) 
+		return -EINVAL;
+
+	for (i--; i >= 1; i--) {
+		ret = sscanf(buf, "%lu", &gpu_freq);
+
+		mutex_lock(&dvfs_lock);
+		if (i == array_size-1) {
+			vde->max_rate = gpu_freq*1000000;
+			//mpe->max_rate = gpu_freq*1000000;
+			two_d->max_rate = gpu_freq*1000000;
+			//epp->max_rate = gpu_freq*1000000;
+			//three_d->max_rate = gpu_freq*1000000;
+			//three_d2->max_rate = gpu_freq*1000000;
+			//se->max_rate = gpu_freq*1000000;
+			//host1x->max_rate = DIV_ROUND_UP((gpu_freq*1000000),2);
+			//cbus->max_rate = gpu_freq*1000000;
+			//pll_c->max_rate = (gpu_freq*1000000)*2;
+			//pr_info("Set pll clk->max_rate. %d\n", i);
+		}
+
+		vde->dvfs->freqs[i] = gpu_freq*1000000;
+		//mpe->dvfs->freqs[i] = gpu_freq*1000000;
+		two_d->dvfs->freqs[i] = gpu_freq*1000000;
+		//epp->dvfs->freqs[i] = gpu_freq*1000000;
+		//three_d->dvfs->freqs[i] = gpu_freq*1000000;
+		//three_d2->dvfs->freqs[i] = gpu_freq*1000000;
+		//se->dvfs->freqs[i] = gpu_freq*1000000;
+		//host1x->dvfs->freqs[i] = DIV_ROUND_UP((gpu_freq*1000000),2);
+		//cbus->dvfs->freqs[i] = gpu_freq*1000000;
+		//if (i >= 6)
+		//	pll_c->dvfs->freqs[i] = (gpu_freq*1000000)*2;
+			
+		mutex_unlock(&dvfs_lock);
+
+		ret = sscanf(buf, "%s", cur_size);
+
+		if (ret == 0)
+			return 0;
+
+		buf += (strlen(cur_size) + 1);
+	}
+
+	return count;
+}
+
+static ssize_t show_emc_oc(struct cpufreq_policy *policy, char *buf)
+{
+	char *c = buf;
+	struct clk *emc = tegra_get_clock_by_name("emc");
+	int i = emc->dvfs->num_freqs;
+
+	if (i == 0)
+		return -EINVAL;
+
+	for (i--; i >= 1; i--)
+		c += sprintf(c, "%lu ", emc->dvfs->freqs[i]/1000000);
+
+	return c - buf;
+}
+
+static ssize_t store_emc_oc(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long emc_freq;
+
+	//all the tables that need to be updated with the new frequencies
+	struct clk *emc = tegra_get_clock_by_name("emc");
+
+	const int array_size = emc->dvfs->num_freqs;
+	char cur_size[array_size];
+	int i = array_size;
+
+	if (i == 0) 
+		return -EINVAL;
+
+	for (i--; i >= 1; i--) {
+		ret = sscanf(buf, "%lu", &emc_freq);
+
+		mutex_lock(&dvfs_lock);
+		if (i == array_size-1) {
+			emc->max_rate = emc_freq*1000000;
+		}
+
+		emc->dvfs->freqs[i] = emc_freq*1000000;
 			
 		mutex_unlock(&dvfs_lock);
 
@@ -996,6 +1138,8 @@ cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(UV_mV_table);
 cpufreq_freq_attr_rw(gpu_voltage);
 cpufreq_freq_attr_rw(gpu_oc);
+cpufreq_freq_attr_rw(two_d_oc);
+cpufreq_freq_attr_rw(emc_oc);
 #endif
 cpufreq_freq_attr_ro(policy_min_freq);
 cpufreq_freq_attr_ro(policy_max_freq);
@@ -1017,6 +1161,8 @@ static struct attribute *default_attrs[] = {
 	&UV_mV_table.attr,
 	&gpu_voltage.attr,
 	&gpu_oc.attr,
+	&two_d_oc.attr,
+	&emc_oc.attr,
 	#endif
 	&policy_min_freq.attr,
 	&policy_max_freq.attr,

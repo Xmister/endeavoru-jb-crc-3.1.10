@@ -1,5 +1,5 @@
 /*
- * drivers/cpufreq/cpufreq_interactive.c
+ * drivers/cpufreq/cpufreq_gaming.c
  *
  * Copyright (C) 2010 Google, Inc.
  *
@@ -124,15 +124,15 @@ static unsigned long midrange_freq;
 static unsigned long midrange_go_maxspeed_load;
 static unsigned long midrange_max_boost;
 
-static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
+static int cpufreq_governor_gaming(struct cpufreq_policy *policy,
 		unsigned int event);
 
-#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_GAMING
 static
 #endif
-struct cpufreq_governor cpufreq_gov_interactive = {
-	.name = "interactive",
-	.governor = cpufreq_governor_interactive,
+struct cpufreq_governor cpufreq_gov_gaming = {
+	.name = "gaming",
+	.governor = cpufreq_governor_gaming,
 	.max_transition_latency = 10000000,
 	.owner = THIS_MODULE,
 };
@@ -708,10 +708,10 @@ static struct attribute *interactive_attributes[] = {
 
 static struct attribute_group interactive_attr_group = {
 	.attrs = interactive_attributes,
-	.name = "interactive",
+	.name = "gaming",
 };
 
-static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
+static int cpufreq_governor_gaming(struct cpufreq_policy *policy,
 		unsigned int event)
 {
 	int rc;
@@ -757,10 +757,10 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (atomic_inc_return(&active_count) > 1)
 			return 0;
 
-		rc = sysfs_create_group(cpufreq_global_kobject,
+		/*rc = sysfs_create_group(cpufreq_global_kobject,
 				&interactive_attr_group);
 		if (rc)
-			return rc;
+			return rc;*/
 
 		if (!policy->cpu)
 			rc = input_register_handler(&dbs_input_handler);
@@ -790,8 +790,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (atomic_dec_return(&active_count) > 0)
 			return 0;
 
-		sysfs_remove_group(cpufreq_global_kobject,
-				&interactive_attr_group);
+		/*sysfs_remove_group(cpufreq_global_kobject,
+				&interactive_attr_group);*/
 
 		break;
 
@@ -827,7 +827,7 @@ static struct notifier_block cpufreq_interactive_idle_nb = {
 	.notifier_call = cpufreq_interactive_idle_notifier,
 };
 
-static int __init cpufreq_interactive_init(void)
+static int __init cpufreq_gaming_init(void)
 {
 	unsigned int i;
 	struct cpufreq_interactive_cpuinfo *pcpu;
@@ -852,7 +852,7 @@ static int __init cpufreq_interactive_init(void)
 	}
 
 	up_task = kthread_create(cpufreq_interactive_up_task, NULL,
-				 "kinteractiveup");
+				 "kgamingup");
 	if (IS_ERR(up_task))
 		return PTR_ERR(up_task);
 
@@ -861,7 +861,7 @@ static int __init cpufreq_interactive_init(void)
 
 	/* No rescuer thread, bind to CPU queuing the work for possibly
 	   warm cache (probably doesn't matter much). */
-	down_wq = alloc_workqueue("knteractive_down", 0, 1);
+	down_wq = alloc_workqueue("kgaming_down", 0, 1);
 
 	if (!down_wq)
 		goto err_freeuptask;
@@ -875,7 +875,7 @@ static int __init cpufreq_interactive_init(void)
 
 	idle_notifier_register(&cpufreq_interactive_idle_nb);
 
-	return cpufreq_register_governor(&cpufreq_gov_interactive);
+	return cpufreq_register_governor(&cpufreq_gov_gaming);
 
 err_freeuptask:
 	put_task_struct(up_task);
@@ -883,20 +883,20 @@ err_freeuptask:
 }
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
-fs_initcall(cpufreq_interactive_init);
+fs_initcall(cpufreq_gaming_init);
 #else
-module_init(cpufreq_interactive_init);
+module_init(cpufreq_gaming_init);
 #endif
 
-static void __exit cpufreq_interactive_exit(void)
+static void __exit cpufreq_gaming_exit(void)
 {
-	cpufreq_unregister_governor(&cpufreq_gov_interactive);
+	cpufreq_unregister_governor(&cpufreq_gov_gaming);
 	kthread_stop(up_task);
 	put_task_struct(up_task);
 	destroy_workqueue(down_wq);
 }
 
-module_exit(cpufreq_interactive_exit);
+module_exit(cpufreq_gaming_exit);
 
 MODULE_AUTHOR("Mike Chan <mike@android.com>");
 MODULE_DESCRIPTION("'cpufreq_interactive' - A cpufreq governor for "
