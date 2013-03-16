@@ -53,11 +53,9 @@ static void map_iovmm_area(struct nvmap_handle *h)
 	for (va = h->pgalloc.area->iovm_start, i = 0;
 	     va < (h->pgalloc.area->iovm_start + h->size);
 	     i++, va += PAGE_SIZE) {
-		unsigned long pfn;
-
-		pfn = page_to_pfn(h->pgalloc.pages[i]);
-		BUG_ON(!pfn_valid(pfn));
-		tegra_iovmm_vm_insert_pfn(h->pgalloc.area, va, pfn);
+		BUG_ON(!pfn_valid(page_to_pfn(h->pgalloc.pages[i])));
+		tegra_iovmm_vm_insert_pfn(h->pgalloc.area, va,
+					  page_to_pfn(h->pgalloc.pages[i]));
 	}
 	h->pgalloc.dirty = false;
 }
@@ -364,12 +362,8 @@ phys_addr_t nvmap_pin(struct nvmap_client *client,
 	struct nvmap_handle *h;
 	phys_addr_t phys;
 	int ret = 0;
-	unsigned long ref_id;
 
-	if (!ref)
-		return -EINVAL;
-	ref_id = nvmap_ref_to_id(ref);
-	h = nvmap_get_handle_id(client, ref_id);
+	h = nvmap_handle_get(ref->handle);
 	if (WARN_ON(!h))
 		return -EINVAL;
 
@@ -610,17 +604,4 @@ void nvmap_free(struct nvmap_client *client, struct nvmap_handle_ref *r)
 		return;
 
 	nvmap_free_handle_id(client, nvmap_ref_to_id(r));
-}
-
-int nvmap_mark_global(struct nvmap_client *client, struct nvmap_handle_ref *r)
-{
-	struct nvmap_handle *h;
-
-	h = nvmap_get_handle_id(client, (unsigned long)r->handle);
-	if (!h)
-		return -EINVAL;
-	r->handle->global = true;
-	nvmap_handle_put(h);
-
-	return 0;
 }

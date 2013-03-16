@@ -48,8 +48,8 @@ static int scale3d_is_enabled(void);
 static void scale3d_enable(int enable);
 
 #define POW2(x) ((x) * (x))
-#define CAMERA_3D_CLK 380000000
-#define CAMERA_3D_EMC_CLK 408000000
+#define CAMERA_3D_CLK 352000000
+#define CAMERA_3D_EMC_CLK 437000000
 
 /*
  * debugfs parameters to control 3d clock scaling test
