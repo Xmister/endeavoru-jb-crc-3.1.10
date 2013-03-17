@@ -34,7 +34,7 @@
 	750, 750, 750, 750, 800, 800, 800, 850, 850, 850, 850, 900, 900, 900, 900, 900, 900, 900, 975, 975, 1000, 1000, 1000, 1025, 1025, 1050, 1050, 1075, 1075, 1100, 1100, 1125, 1125, 1150, 1150, 1175, 1175, 1200, 1200, 1237};
 
 #define CORE_MILLIVOLTS {\
-	950, 1000, 1000, 1050, 1100, 1200, 1250, 1250, 1300};
+	950, 1000, 1000, 1050, 1100, 1200, 1225, 1250, 1250};
 
 
 static bool tegra_dvfs_cpu_disabled;
@@ -88,22 +88,29 @@ static struct dvfs_rail *tegra3_dvfs_rails[] = {
 
 static int tegra3_get_core_floor_mv(int cpu_mv)
 {
+#if 0 //We need something more dynamic
 		if (cpu_mv < 800)
 			return  core_millivolts[0];
 		if (cpu_mv < 900)
 			return core_millivolts[1];
 		if (cpu_mv < 1000)
-			return core_millivolts[3];
+			return core_millivolts[2];
 		if ((tegra_cpu_speedo_id() < 2) ||
-		    (tegra_cpu_speedo_id() == 4) ||
-		    (tegra_cpu_speedo_id() == 7) ||
-		    (tegra_cpu_speedo_id() == 8))
-			return core_millivolts[5];
+	        	(tegra_cpu_speedo_id() == 4) ||
+		        (tegra_cpu_speedo_id() == 7) ||
+		        (tegra_cpu_speedo_id() == 8))	
+				return core_millivolts[5];
 		if (cpu_mv < 1100)
-			return core_millivolts[5];
-		if (cpu_mv <= 1250)
+			return core_millivolts[4];
+		if (cpu_mv < 1250)
+			return core_millivolts[6];
+		if (cpu_mv < 1300)
 			return core_millivolts[7];
 		BUG();
+#endif
+int i;
+for (i=0; i<ARRAY_SIZE(core_millivolts) && core_millivolts[i] < cpu_mv; ++i);
+return (i<ARRAY_SIZE(core_millivolts) ? core_millivolts[i] : cpu_mv); //Fail-safe
 }
 
 static int tegra3_get_core_floor_mv2(int cpu_mv, int core_mv)
@@ -133,12 +140,12 @@ static int tegra3_dvfs_rel_vdd_core_vdd_cpu(struct dvfs_rail *vdd_core,
 	if (vdd_cpu->new_millivolts == 0)
 		return 0; /* If G CPU is off, core relations can be ignored */
 	
-	if ( enable_gpu_voltage ) return vdd_cpu->new_millivolts;
-	else {
+	//if ( enable_gpu_voltage ) return vdd_cpu->new_millivolts;
+	//else {
 		cpu_floor = max(vdd_core->new_millivolts, vdd_core->millivolts) -
 			cpu_below_core;
 		return max(vdd_cpu->new_millivolts, cpu_floor);
-	}
+	//}
 }
 
 static struct dvfs_relationship tegra3_dvfs_relationships[] = {
