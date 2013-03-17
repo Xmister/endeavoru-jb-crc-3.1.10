@@ -1708,6 +1708,9 @@ static int __devexit lp5521_led_remove(struct i2c_client *client)
 	for (i = 0; i < pdata->num_leds; i++) {
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_blink);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_slow_blink);
+#ifdef CONFIG_BUILD_FOR_SENSE
+		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_auto_bln);
+#endif
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_off_timer);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_currents);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_pwm_coefficient);
