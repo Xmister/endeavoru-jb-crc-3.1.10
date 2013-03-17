@@ -113,39 +113,27 @@ for (i=0; i<ARRAY_SIZE(core_millivolts) && core_millivolts[i] < cpu_mv; ++i);
 return (i<ARRAY_SIZE(core_millivolts) ? core_millivolts[i] : cpu_mv); //Fail-safe
 }
 
-static int tegra3_get_core_floor_mv2(int cpu_mv, int core_mv)
-{
-		if (core_mv < cpu_mv) return cpu_mv;
-		return core_mv;
-}
-
 /* vdd_core must be >= min_level as a function of vdd_cpu */
 static int tegra3_dvfs_rel_vdd_cpu_vdd_core(struct dvfs_rail *vdd_cpu,
 	struct dvfs_rail *vdd_core)
 {
-	if ( enable_gpu_voltage ) return tegra3_get_core_floor_mv2(vdd_cpu->new_millivolts, vdd_core->new_millivolts);
-	else {
 		int core_floor = max(vdd_cpu->new_millivolts, vdd_cpu->millivolts);
 		core_floor = tegra3_get_core_floor_mv(core_floor);
 		return max(vdd_core->new_millivolts, core_floor);
-	}
 }
 
 /* vdd_cpu must be >= (vdd_core - cpu_below_core) */
 static int tegra3_dvfs_rel_vdd_core_vdd_cpu(struct dvfs_rail *vdd_core,
 	struct dvfs_rail *vdd_cpu)
 {
-	int cpu_floor;
+		int cpu_floor;
 
-	if (vdd_cpu->new_millivolts == 0)
-		return 0; /* If G CPU is off, core relations can be ignored */
-	
-	//if ( enable_gpu_voltage ) return vdd_cpu->new_millivolts;
-	//else {
+		if (vdd_cpu->new_millivolts == 0)
+			return 0; /* If G CPU is off, core relations can be ignored */
+
 		cpu_floor = max(vdd_core->new_millivolts, vdd_core->millivolts) -
-			cpu_below_core;
+		cpu_below_core;
 		return max(vdd_cpu->new_millivolts, cpu_floor);
-	//}
 }
 
 static struct dvfs_relationship tegra3_dvfs_relationships[] = {
