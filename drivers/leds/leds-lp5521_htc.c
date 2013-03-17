@@ -44,7 +44,7 @@ static int current_currents, current_lut_coefficient, current_pwm_coefficient;
 static int current_mode, backlight_mode, suspend_mode, offtimer_mode;
 static int amber_mode, button_brightness, slow_blink_brightness;
 #ifdef CONFIG_BUILD_FOR_SENSE
-static int auto_bln=0;
+static int auto_bln=1;
 #endif
 static struct regulator *regulator;
 static struct i2c_client *private_lp5521_client;
