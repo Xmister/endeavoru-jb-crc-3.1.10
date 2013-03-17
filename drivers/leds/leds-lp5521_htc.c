@@ -1478,6 +1478,26 @@ static DEVICE_ATTR(auto_bln, 0644, lp5521_led_auto_bln_show,
 
 #endif
 
+static ssize_t lp5521_led_button_brightness_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", button_brightness);
+}
+
+static ssize_t lp5521_led_button_brightness_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	sscanf(buf, "%d", &button_brightness);
+	if (button_brightness < 0) button_brightness=0;
+	if (button_brightness > 255) button_brightness=255;
+
+	return count;
+}
+
+static DEVICE_ATTR(button_brightness, 0644, lp5521_led_button_brightness_show,
+					lp5521_led_button_brightness_store);
+
 static void lp5521_led_early_suspend(struct early_suspend *handler)
 {
 	struct i2c_client *client = private_lp5521_client;
@@ -1592,6 +1612,11 @@ static int lp5521_led_probe(struct i2c_client *client
 			goto err_register_attr_auto_bln;
 		}
 #endif
+		ret = device_create_file(cdata->leds[i].cdev.dev, &dev_attr_button_brightness);
+		if (ret < 0) {
+			pr_err("%s: failed on create attr button_brightness [%d]\n", __func__, i);
+			goto err_register_attr_button_brightness;
+		}
 		ret = device_create_file(cdata->leds[i].cdev.dev, &dev_attr_off_timer);
 		if (ret < 0) {
 			pr_err("%s: failed on create attr off_timer [%d]\n", __func__, i);
@@ -1676,6 +1701,10 @@ err_register_attr_auto_bln:
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_auto_bln);
 	}
 #endif
+err_register_attr_button_brightness:
+	for (i = 0; i < pdata->num_leds; i++) {
+		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_button_brightness);
+	}
 err_register_attr_blink:
 	for (i = 0; i < pdata->num_leds; i++) {
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_blink);
@@ -1708,6 +1737,10 @@ static int __devexit lp5521_led_remove(struct i2c_client *client)
 	for (i = 0; i < pdata->num_leds; i++) {
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_blink);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_slow_blink);
+#ifdef CONFIG_BUILD_FOR_SENSE
+		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_auto_bln);
+#endif
+		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_button_brightness);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_off_timer);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_currents);
 		device_remove_file(cdata->leds[i].cdev.dev,&dev_attr_pwm_coefficient);
