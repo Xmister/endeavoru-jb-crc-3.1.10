@@ -873,6 +873,12 @@ config SENSE_4_PLUS
 	help
 	  Support for SENSE 4 PLUS.
 
+config BUILD_FOR_SENSE
+	depends on ARCH_TEGRA_3x_SOC
+	bool "Enable special things for Sense ROMs"
+	help
+	  This will make the kernel more compatible with Sense based ROMs.
+
 config MEMORY_FOOTPRINT_DEBUGGING
 	bool "footprint for debugging"
 	default n
