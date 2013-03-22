@@ -41,7 +41,7 @@
 static int led_rw_delay;
 static int current_state, current_blink, current_time;
 static int current_currents, current_lut_coefficient, current_pwm_coefficient;
-static int current_mode, backlight_mode, suspend_mode, offtimer_mode;
+static int current_mode, backlight_mode, suspend_mode, offtimer_mode, saved_mode=0;
 static int amber_mode, button_brightness, slow_blink_brightness;
 #ifdef CONFIG_BUILD_FOR_SENSE
 static int auto_bln=1;
@@ -706,7 +706,7 @@ static void lp5521_dual_off(struct i2c_client *client)
 	if (auto_bln && current_mode == 2) {
 		if ( suspend_mode ) 
 			lp5521_backlight_off(private_lp5521_client);
-		else {
+		else if ( saved_mode ) {
 			lp5521_backlight_on(private_lp5521_client);
 		}
 	}
@@ -1506,6 +1506,7 @@ static void lp5521_led_early_suspend(struct early_suspend *handler)
 	suspend_mode = 1;
 	MF_DEBUG("00210000");
 #ifdef CONFIG_BUILD_FOR_SENSE
+	saved_mode=backlight_mode;
 	//Xmister, set suspend blink if neccessary
 	if ( auto_bln && current_mode == 2 )
 		lp5521_led_current_set_for_key(2);
@@ -1526,8 +1527,8 @@ static void lp5521_led_late_resume(struct early_suspend *handler)
 #ifdef CONFIG_BUILD_FOR_SENSE
 	//Xmister re-enable stock backlight on resume
 	if (auto_bln) {
-		lp5521_backlight_off(private_lp5521_client);
-		lp5521_backlight_on(private_lp5521_client);
+		if (saved_mode)
+			lp5521_backlight_on(private_lp5521_client);
 	}
 #endif
 	printk("[LED][RESUME] lp5521_led_late_resume ---\n");
