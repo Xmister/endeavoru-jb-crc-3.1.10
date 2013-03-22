@@ -154,7 +154,7 @@ static struct tegra_thermal_data thermal_data = {
 	.hysteresis_edp = 3000,
 #endif
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-	.temp_throttle = 85000,
+	.temp_throttle = 80000,
 	.tc1 = 2,
 	.tc2 = 1,
 	.passive_delay = 500,
