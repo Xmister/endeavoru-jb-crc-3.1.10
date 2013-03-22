@@ -315,8 +315,9 @@ static void lp5521_green_blink(struct i2c_client *client)
 #ifdef CONFIG_BUILD_FOR_SENSE
 	}
 	//Xmister: Turn on BLN
-	if (auto_bln && suspend_mode )
+	if (auto_bln && suspend_mode ) {
 		lp5521_led_current_set_for_key(2);
+	}
 #endif
 	I(" %s ---\n" , __func__);
 }
@@ -704,10 +705,9 @@ static void lp5521_dual_off(struct i2c_client *client)
 #ifdef CONFIG_BUILD_FOR_SENSE
 	//Xmister: Turn off BLN
 	if (auto_bln && current_mode == 2) {
-		if ( suspend_mode ) 
-			lp5521_backlight_off(private_lp5521_client);
-		else if ( saved_mode ) {
-			lp5521_backlight_on(private_lp5521_client);
+		lp5521_backlight_off(client);
+		if ( !suspend_mode && saved_mode ) {
+			lp5521_backlight_on(client);
 		}
 	}
 #endif
