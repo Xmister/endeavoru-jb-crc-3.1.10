@@ -32,6 +32,11 @@ modules.builtin
 *.lzo
 *.patch
 *.gcno
+*.REMOTE.*
+*.LOCAL.*
+*.BACKUP.*
+*.BASE.*
+*.symvers
 
 #
 # Top-level generic files
@@ -82,5 +87,5 @@ GSYMS
 GTAGS
 
 *.orig
-*~
+*~*
 \#*#
