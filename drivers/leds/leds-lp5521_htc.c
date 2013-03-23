@@ -588,6 +588,25 @@ static void lp5521_dual_color_blink(struct i2c_client *client)
 	I(" %s ---\n" , __func__);
 }
 
+static inline int button_brightness_adjust(struct i2c_client *client) {
+	uint8_t data = 0x00;
+	int ret, brightness;
+	I("%s, current_mode: %d, backlight_mode: %d", __func__, current_mode, backlight_mode);
+
+	if (current_mode == 0 && backlight_mode == 0)
+		lp5521_led_enable(client);
+	brightness = button_brightness;
+	backlight_mode = 1;
+	mutex_lock(&led_mutex);
+	I("locked %s", __func__);
+
+	data = (u8)brightness;
+	ret = i2c_write_block(client, 0x04, &data, 1);
+
+	mutex_unlock(&led_mutex);
+	return ret;
+}
+
 static inline int button_fade_in(struct i2c_client *client) {
 	uint8_t data = 0x00;
 	int i, ret, brightness;
@@ -1488,15 +1507,20 @@ static ssize_t lp5521_led_button_brightness_store(struct device *dev,
 				   struct device_attribute *attr,
 				   const char *buf, size_t count)
 {
+	struct i2c_client *client = private_lp5521_client;
+
 	sscanf(buf, "%d", &button_brightness);
 	if (button_brightness < 0) button_brightness=0;
 	if (button_brightness > 255) button_brightness=255;
+
+	button_brightness_adjust(client);
 
 	return count;
 }
 
 static DEVICE_ATTR(button_brightness, 0644, lp5521_led_button_brightness_show,
 					lp5521_led_button_brightness_store);
+
 
 static void lp5521_led_early_suspend(struct early_suspend *handler)
 {
