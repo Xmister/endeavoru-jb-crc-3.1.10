@@ -69,8 +69,7 @@ struct nvhost_device_id {
 
 struct nvhost_clock {
 	char *name;
-	unsigned long default_rate;
-	u32 moduleid;
+	long default_rate;
 };
 
 enum nvhost_device_powerstate_t {

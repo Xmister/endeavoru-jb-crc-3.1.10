@@ -101,8 +101,7 @@ struct nvhost_read_3d_reg_args {
 };
 
 struct nvhost_clk_rate_args {
-	__u32 rate;
-	__u32 moduleid;
+	__u64 rate;
 };
 
 struct nvhost_set_timeout_args {
