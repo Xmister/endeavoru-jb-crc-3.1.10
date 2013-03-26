@@ -49,6 +49,18 @@
 #include "boot.h"
 #include "testmode.h"
 #include "scan.h"
+#include "version.h"
+
+/* HTC_WIFI_START */
+#define CONFIG_WIFI_NVS_PROC_CREATE 1
+int stop_wifi_driver_flag = 0;
+EXPORT_SYMBOL(stop_wifi_driver_flag);
+
+#ifdef CONFIG_WIFI_NVS_PROC_CREATE
+extern unsigned char *get_wifi_nvs_ram( void );
+unsigned char *nvs_ram=NULL;
+#endif
+/*HTC_WIFI_END */
 
 #define WL1271_BOOT_RETRIES 3
 
@@ -1401,13 +1413,64 @@ static int wl1271_fetch_nvs(struct wl1271 *wl)
 	const struct firmware *fw;
 	int ret;
 
-	ret = request_firmware(&fw, WL12XX_NVS_NAME, wl->dev);
+//HTC_WIFI_START
+#ifdef CONFIG_WIFI_NVS_PROC_CREATE
+
+	int calibration_data_length = 0;
+    nvs_ram = get_wifi_nvs_ram();
+    calibration_data_length = nvs_ram[13]*16*16 + nvs_ram[12];
+    printk("[WLAN] Calibration data length: %d\n",calibration_data_length);
+    if(calibration_data_length != 468) {
+        printk("[WLAN] download calibration from %s\n",WL12XX_NVS_NAME_CALIBRATED_AUTO);
+        ret = request_firmware(&fw, WL12XX_NVS_NAME_CALIBRATED_AUTO, wl->dev);
+        if (ret < 0) {
+            wl1271_error("could not get calibrated nvs file %s: %d", WL12XX_NVS_NAME_CALIBRATED_AUTO,
+                         ret);
+
+            ret = request_firmware(&fw, WL12XX_NVS_NAME, wl->dev);
+
+            if (ret < 0) {
+                wl1271_error("could not get nvs file %s: %d", WL12XX_NVS_NAME,
+                             ret);
+                return ret;
+            }
+        }
+    } else {
+        printk("[WLAN] download calibration from %s\n",WL12XX_NVS_NAME_CALIBRATED);
+        ret = request_firmware(&fw, WL12XX_NVS_NAME_CALIBRATED, wl->dev);
+        if (ret < 0) {
+            wl1271_error("could not get calibrated nvs file %s: %d", WL12XX_NVS_NAME_CALIBRATED,
+                         ret);
+
+            ret = request_firmware(&fw, WL12XX_NVS_NAME, wl->dev);
+
+            if (ret < 0) {
+                wl1271_error("could not get nvs file %s: %d", WL12XX_NVS_NAME,
+                             ret);
+                return ret;
+            }
+        }
+    }
+
+#else
+    ret = request_firmware(&fw, WL12XX_NVS_NAME_CALIBRATED, wl->dev);
+//HTC_WIFI_END
 
 	if (ret < 0) {
-		wl1271_error("could not get nvs file %s: %d", WL12XX_NVS_NAME,
+		wl1271_error("could not get calibrated nvs file %s: %d", WL12XX_NVS_NAME_CALIBRATED,
 			     ret);
-		return ret;
+
+		ret = request_firmware(&fw, WL12XX_NVS_NAME, wl->dev);
+
+		if (ret < 0) {
+			wl1271_error("could not get nvs file %s: %d", WL12XX_NVS_NAME,
+				     ret);
+			return ret;
+		}
 	}
+//HTC_WIFI_START
+#endif
+//HTC_WIFI_END
 
 	wl->nvs = kmemdup(fw->data, fw->size, GFP_KERNEL);
 
@@ -6491,10 +6554,22 @@ out:
 	return ret;
 }
 
+/* HTC_WIFI_START */
+#ifdef CONFIG_WIFI_NVS_PROC_CREATE
+extern unsigned char *get_wifi_nvs_ram( void );
+#endif
+/* HTC_WIFI_END */
+
 static int wl1271_register_hw(struct wl1271 *wl)
 {
 	int ret;
 	u32 oui_addr = 0, nic_addr = 0;
+
+/* HTC_WIFI_START */
+#ifdef CONFIG_WIFI_NVS_PROC_CREATE
+        unsigned char *nvs_ram=NULL;
+#endif
+/* HTC_WIFI_END */
 
 	if (wl->mac80211_registered)
 		return 0;
@@ -6512,11 +6587,29 @@ static int wl1271_register_hw(struct wl1271 *wl)
 		 * the beginning of the wl->nvs structure.
 		 */
 		u8 *nvs_ptr = (u8 *)wl->nvs;
+//HTC_WIFI_START
+#ifdef CONFIG_WIFI_NVS_PROC_CREATE
+        nvs_ram = get_wifi_nvs_ram();
+		printk("[WLAN] Read MAC from calibration data\n");
+        printk("[WLAN] Data length: 0x%x%x\n",nvs_ram[13],nvs_ram[12]);
+		oui_addr =
+			(nvs_ram[75] << 16) + (nvs_ram[74] << 8) + nvs_ram[70];
+		nic_addr =
+			(nvs_ram[69] << 16) + (nvs_ram[68] << 8) + nvs_ram[67];
 
+		printk("[WLAN] MAC: %x:%x:%x:%x:%x:%x\n",
+			   nvs_ram[75],nvs_ram[74],nvs_ram[70],
+			   nvs_ram[69],nvs_ram[68],nvs_ram[67]);
+
+#else
+//HTC_WIFI_END
 		oui_addr =
 			(nvs_ptr[11] << 16) + (nvs_ptr[10] << 8) + nvs_ptr[6];
 		nic_addr =
 			(nvs_ptr[5] << 16) + (nvs_ptr[4] << 8) + nvs_ptr[3];
+//HTC_WIFI_START
+#endif
+//HTC_WIFI_END
 	}
 
 	/* if the MAC address is zeroed in the NVS derive from fuse */
@@ -7138,6 +7231,8 @@ static struct platform_driver wl12xx_driver = {
 
 static int __init wl12xx_init(void)
 {
+	wl1271_info("driver version: %s", wl12xx_git_head);
+	wl1271_info("compilation time: %s", wl12xx_timestamp);
 
 	return platform_driver_register(&wl12xx_driver);
 }
