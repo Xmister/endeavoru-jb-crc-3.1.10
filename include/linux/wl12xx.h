@@ -34,7 +34,6 @@ enum {
 	WL12XX_REFCLOCK_26_XTAL = 5, /* 26 MHz, XTAL */
 };
 
-
 /* TCXO clock values */
 enum {
 	WL12XX_TCXOCLOCK_19_2	= 0, /* 19.2MHz */

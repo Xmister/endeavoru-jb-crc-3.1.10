@@ -559,7 +559,6 @@ void __cfg80211_roamed(struct wireless_dev *wdev,
 #ifdef CONFIG_CFG80211_WEXT
 	union iwreq_data wrqu;
 #endif
-
 	ASSERT_WDEV_LOCK(wdev);
 
 	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
