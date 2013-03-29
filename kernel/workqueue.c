@@ -1006,33 +1006,15 @@ static void cwq_dec_nr_in_flight(struct cpu_workqueue_struct *cwq, int color,
 		complete(&cwq->wq->first_flusher->done);
 }
 
-/**
- * try_to_grab_pending - steal work item from worklist
- * @work: work item to steal
- * @is_dwork: @work is a delayed_work
- *
- * Try to grab PENDING bit of @work.  This function can handle @work in any
- * stable state - idle, on timer or on worklist.  Return values are
- *
- *  1		if @work was pending and we successfully stole PENDING
- *  0		if @work was idle and we claimed PENDING
- *  -EAGAIN	if PENDING couldn't be grabbed at the moment, safe to busy-retry
- *
- * On >= 0 return, the caller owns @work's PENDING bit.
+/*
+ * Upon a successful return (>= 0), the caller "owns" WORK_STRUCT_PENDING bit,
+ * so this work can't be re-armed in any way.
  */
-static int try_to_grab_pending(struct work_struct *work, bool is_dwork)
+static int try_to_grab_pending(struct work_struct *work)
 {
 	struct global_cwq *gcwq;
+	int ret = -1;
 
-	/* try to steal the timer if it exists */
-	if (is_dwork) {
-		struct delayed_work *dwork = to_delayed_work(work);
-
-		if (likely(del_timer(&dwork->timer)))
-			return 1;
-	}
-
-	/* try to claim PENDING the normal way */
 	if (!test_and_set_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(work)))
 		return 0;
 
@@ -1042,7 +1024,7 @@ static int try_to_grab_pending(struct work_struct *work, bool is_dwork)
 	 */
 	gcwq = get_work_gcwq(work);
 	if (!gcwq)
-		return -EAGAIN;
+		return ret;
 
 	spin_lock_irq(&gcwq->lock);
 	if (!list_empty(&work->entry)) {
@@ -1058,14 +1040,12 @@ static int try_to_grab_pending(struct work_struct *work, bool is_dwork)
 			cwq_dec_nr_in_flight(get_work_cwq(work),
 				get_work_color(work),
 				*work_data_bits(work) & WORK_STRUCT_DELAYED);
-
-			spin_unlock_irq(&gcwq->lock);
-			return 1;
+			ret = 1;
 		}
 	}
 	spin_unlock_irq(&gcwq->lock);
 
-	return -EAGAIN;
+	return ret;
 }
 
 /**
@@ -2810,12 +2790,15 @@ bool flush_work_sync(struct work_struct *work)
 }
 EXPORT_SYMBOL_GPL(flush_work_sync);
 
-static bool __cancel_work_timer(struct work_struct *work, bool is_dwork)
+static bool __cancel_work_timer(struct work_struct *work,
+				struct timer_list* timer)
 {
 	int ret;
 
 	do {
-		ret = try_to_grab_pending(work, is_dwork);
+		ret = (timer && likely(del_timer(timer)));
+		if (!ret)
+			ret = try_to_grab_pending(work);
 		wait_on_work(work);
 	} while (unlikely(ret < 0));
 
@@ -2843,7 +2826,7 @@ static bool __cancel_work_timer(struct work_struct *work, bool is_dwork)
  */
 bool cancel_work_sync(struct work_struct *work)
 {
-	return __cancel_work_timer(work, false);
+	return __cancel_work_timer(work, NULL);
 }
 EXPORT_SYMBOL_GPL(cancel_work_sync);
 
@@ -2900,7 +2883,7 @@ EXPORT_SYMBOL(flush_delayed_work_sync);
  */
 bool cancel_delayed_work_sync(struct delayed_work *dwork)
 {
-	return __cancel_work_timer(&dwork->work, true);
+	return __cancel_work_timer(&dwork->work, &dwork->timer);
 }
 EXPORT_SYMBOL(cancel_delayed_work_sync);
 
