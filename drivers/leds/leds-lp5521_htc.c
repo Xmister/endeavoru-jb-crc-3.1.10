@@ -1602,7 +1602,7 @@ static int lp5521_led_probe(struct i2c_client *client
 	}
    	tegra_gpio_enable(pdata->ena_gpio);
 	button_brightness = pdata->led_config[2].led_lux * 255 / 100;
-	slow_blink_brightness = 255;
+	slow_blink_brightness = 15;
 
 	private_lp5521_client = client;
 	g_led_work_queue = create_workqueue("led");
