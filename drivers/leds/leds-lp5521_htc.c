@@ -887,6 +887,7 @@ static void led_powerkey_work_func(struct work_struct *work)
 	uint8_t data;
 	int ret;
 	int address, i, fade_in_steps, fade_out_steps;
+	int actual_brightness;
 
 	fade_in_steps = fade_out_steps = 3;
 
@@ -960,12 +961,13 @@ static void led_powerkey_work_func(struct work_struct *work)
 			/* slow blinking */
 			// Start address for the button programm. We have 32 instructions.
 			address = 0x50;
+			actual_brightness=min(slow_blink_brightness,button_brightness);
 
 			for(i=1; i<=fade_in_steps; i++) {
 				/* === set pwm to (255/10)*i === */
 				data = 0x40;
 				ret = i2c_write_block(client, address++, &data, 1);
-				data = (u8)((slow_blink_brightness/fade_in_steps)*i);
+				data = (u8)((actual_brightness/fade_in_steps)*i);
 				ret = i2c_write_block(client, address++, &data, 1);
 				/* === wait 0.064s < ?s < 0.2s === */
 				data = 0x48;
@@ -984,7 +986,7 @@ static void led_powerkey_work_func(struct work_struct *work)
 				/* === set pwm to (255/10)*i === */
 				data = 0x40;
 				ret = i2c_write_block(client, address++, &data, 1);
-				data = (u8)((slow_blink_brightness/fade_out_steps)*i);
+				data = (u8)((actual_brightness/fade_out_steps)*i);
 				ret = i2c_write_block(client, address++, &data, 1);
 				/* === wait 0.064s < ?s < 0.2s === */
 				data = 0x48;
