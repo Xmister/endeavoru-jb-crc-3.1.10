@@ -28,7 +28,13 @@
 /* in kHz */
 #define BOOST_CPU_FREQ_MIN	1300000
 #define CAP_CPU_FREQ_MAX	475000
-#define T3_CPU_MIN_FREQ     51000
+#define SUSPEND_CPU_FREQ_MAX	CAP_CPU_FREQ_MAX
+#define SUSPEND_CPU_NUM_MAX	2
+#define CPU_FREQ_BOOST		BOOST_CPU_FREQ_MIN
+#define CPU_FREQ_MAX		BOOST_CPU_FREQ_MIN
+#define CPU_FREQ_MAX_0		1500000
+#define T3_LP_MAX_FREQ		CAP_CPU_FREQ_MAX
+#define T3_CPU_MIN_FREQ     	51000
 
 #define MIN_CPU_MV 725
 #define MAX_CPU_MV 1300
@@ -39,3 +45,5 @@ extern unsigned int tegra_pmqos_boost_freq;
 extern unsigned int tegra_pmqos_cap_freq;
 extern unsigned int tegra_pmqos_cpu_freq_limits[];
 extern unsigned int miss_freq_set;
+extern unsigned int tegra_cpu_freq_max(unsigned int cpu);
+extern unsigned int tegra_get_suspend_boost_freq(void);
