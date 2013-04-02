@@ -676,7 +676,7 @@ static ssize_t store_scaling_max_freq_limit(struct cpufreq_policy *policy,
 		max = tegra_pmqos_cpu_freq_limits[cpu];
 		if (max == 0)
 			// valus = 0 means reset to default
-			max = tegra_pmqos_boost_freq;	
+			max = tegra_cpu_freq_max(cpu);
 				
 		
 		new_policy.max = max;
@@ -696,11 +696,11 @@ static ssize_t store_scaling_max_freq_limit(struct cpufreq_policy *policy,
 static ssize_t store_scaling_max_freq					
 (struct cpufreq_policy *policy, const char *buf, size_t count)		
 {
-	if (miss_freq_set > 0) {
+	/*if (miss_freq_set > 0) {
 		pr_info("Xmister: Maxfreq miss\n");
 		--miss_freq_set;
 		return -EINVAL;
-	}									
+	}*/									
 	unsigned int ret = -EINVAL;					
 	struct cpufreq_policy new_policy;
 	char* temp;			
@@ -715,8 +715,14 @@ static ssize_t store_scaling_max_freq
 /*Bricked:*/					
 	if (new_policy.max <= 475000)
                 return -EINVAL;
-	tegra_pmqos_boost_freq = new_policy.max;
 /*EndBricked*/
+
+	// maxwen: this will overwrite any values set by
+	// scaling_max_freq_limit
+	tegra_pmqos_cpu_freq_limits[0]=new_policy.max;
+	tegra_pmqos_cpu_freq_limits[1]=new_policy.max;
+	tegra_pmqos_cpu_freq_limits[2]=new_policy.max;
+	tegra_pmqos_cpu_freq_limits[3]=new_policy.max;
 				
 	ret = __cpufreq_set_policy(policy, &new_policy);		
 	policy->user_policy.max = new_policy.max;	
