@@ -120,7 +120,7 @@ enum wl1271_commands {
 	CMD_NOISE_HIST		= 14,
 	CMD_QUIET_ELEMENT_SET_STATE = 15,
 	CMD_SET_BCN_MODE	= 16,
-
+	
 	CMD_MEASUREMENT		= 17,
 	CMD_STOP_MEASUREMENT 	= 18,
 	CMD_SET_PS_MODE	 	= 19,
@@ -128,8 +128,8 @@ enum wl1271_commands {
 	CMD_STOP_CHANNEL_SWICTH = 21,
 	CMD_AP_DISCOVERY	= 22,
 	CMD_STOP_AP_DISCOVERY	= 23,
-	CMD_HEALTH_CHECK	= 24,
-	CMD_DEBUG		= 25,
+	CMD_HEALTH_CHECK	= 24,	   
+	CMD_DEBUG		= 25, 
 	CMD_TRIGGER_SCAN_TO	= 26,
 	CMD_CONNECTION_SCAN_CFG	= 27,
 	CMD_CONNECTION_SCAN_SSID_CFG	= 28,
@@ -390,7 +390,6 @@ struct wl1271_cmd_template_set {
 	u8 long_retry_limit;
 	u8 aflags;
 	u8 reserved;
-
 	u8 template_data[WL1271_CMD_TEMPL_MAX_SIZE];
 } __packed;
 
