@@ -84,23 +84,7 @@ static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
 static int suspend_index;
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/* put early_suspend/late_resume handlers here for the display in order
- * to keep the code out of the display driver, keeping it closer to upstream
- */
-struct early_suspend tegra_cpufreq_early_suspender;
-struct early_suspend tegra_cpufreq_performance_early_suspender;
-static struct pm_qos_request_list cap_cpu_freq_req;
-static struct pm_qos_request_list cap_cpu_num_req;
-static struct pm_qos_request_list boost_cpu_freq_req;
-static struct workqueue_struct *suspend_wq;
-static struct delayed_work suspend_work;
-#define SUSPEND_DELAY_MS 1000
-static unsigned int suspend_delay;
-static unsigned int use_suspend_delay = 1;
-static void tegra_cancel_delayed_suspend_work(void);
-#endif
+static spinlock_t user_cap_lock;
 
 #ifdef CONFIG_TEGRA3_VARIANT_CPU_OVERCLOCK
 int enable_oc = 0;
@@ -145,87 +129,24 @@ static struct kernel_param_ops policy_ops = {
 };
 module_param_cb(force_policy_max, &policy_ops, &force_policy_max, 0644);
 
-static int suspend_cap_freq_set(const char *arg, const struct kernel_param *kp)
-{
-	int tmp;
-	
-	if (1 != sscanf(arg, "%d", &tmp))
-		return -EINVAL;
-
-    suspend_cap_freq = tmp;
-    pr_info("suspend_cap_freq %d\n", suspend_cap_freq);
-	return 0;
-}
-
-static int suspend_cap_freq_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_uint(buffer, kp);
-}
-
-static struct kernel_param_ops suspend_cap_freq_ops = {
-	.set = suspend_cap_freq_set,
-	.get = suspend_cap_freq_get,
-};
-module_param_cb(suspend_cap_freq, &suspend_cap_freq_ops, &suspend_cap_freq, 0644);
-
-static int suspend_cap_cpu_num_set(const char *arg, const struct kernel_param *kp)
-{
-	int tmp;
-	
-	if (1 != sscanf(arg, "%d", &tmp))
-		return -EINVAL;
-
-	if (tmp == PM_QOS_MAX_ONLINE_CPUS_DEFAULT_VALUE)
-		tmp = CONFIG_NR_CPUS;
-
-	if (tmp < 1 || tmp > CONFIG_NR_CPUS)
-		return -EINVAL;
-			
-    suspend_cap_cpu_num = tmp;
-    pr_info("suspend_cap_cpu_num %d\n", suspend_cap_cpu_num);
-	return 0;
-}
-
-static int suspend_cap_cpu_num_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_uint(buffer, kp);
-}
-
-static struct kernel_param_ops suspend_cap_cpu_num_ops = {
-	.set = suspend_cap_cpu_num_set,
-	.get = suspend_cap_cpu_num_get,
-};
-module_param_cb(suspend_cap_cpu_num, &suspend_cap_cpu_num_ops, &suspend_cap_cpu_num, 0644);
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static int use_suspend_delay_set(const char *arg, const struct kernel_param *kp)
-{
-	unsigned int tmp;
-	
-	if (1 != sscanf(arg, "%u", &tmp))
-		return -EINVAL;
-
-	if (tmp < 0 || tmp > 1)
-		return -EINVAL;
-			
-    use_suspend_delay = tmp;
-    pr_info("use_suspend_delay %d\n", use_suspend_delay);
-	return 0;
-}
-
-static int use_suspend_delay_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_uint(buffer, kp);
-}
-
-static struct kernel_param_ops use_suspend_delay_ops = {
-	.set = use_suspend_delay_set,
-	.get = use_suspend_delay_get,
-};
-module_param_cb(use_suspend_delay, &use_suspend_delay_ops, &use_suspend_delay, 0644);
-#endif
 
 static unsigned int cpu_user_cap = 0;
+
+void htc_set_cpu_user_cap(const unsigned int value)
+{
+	unsigned long flags = 0;
+	spin_lock_irqsave(&user_cap_lock, flags);
+	cpu_user_cap = value;
+	spin_unlock_irqrestore(&user_cap_lock, flags);
+}
+
+void htc_get_cpu_user_cap(unsigned int *value)
+{
+	unsigned long flags = 0;
+	spin_lock_irqsave(&user_cap_lock, flags);
+	*value = cpu_user_cap;
+	spin_unlock_irqrestore(&user_cap_lock, flags);
+}
 
 static inline void _cpu_user_cap_set_locked(void)
 {
@@ -272,11 +193,11 @@ static int cpu_user_cap_get(char *buffer, const struct kernel_param *kp)
 	return param_get_uint(buffer, kp);
 }
 
-static struct kernel_param_ops cpu_user_cap_ops = {
+static struct kernel_param_ops cap_ops = {
 	.set = cpu_user_cap_set,
 	.get = cpu_user_cap_get,
 };
-module_param_cb(cpu_user_cap, &cpu_user_cap_ops, &cpu_user_cap, 0644);
+module_param_cb(cpu_user_cap, &cap_ops, &cpu_user_cap, 0644);
 
 static unsigned int user_cap_speed(unsigned int requested_speed)
 {
@@ -296,14 +217,6 @@ static unsigned int powersave_speed(unsigned int requested_speed)
 #else
 #define powersave_speed(requested_speed) (requested_speed)
 #endif
-
-/* disable edp limitations */
-static unsigned int no_edp_limit = 0;
-module_param(no_edp_limit, uint, 0644);
-
-/* disable thermal throttling limitations */
-unsigned int no_thermal_throttle_limit = 0;
-module_param(no_thermal_throttle_limit, uint, 0644);
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 
@@ -371,6 +284,8 @@ static void edp_update_limit(void)
 	edp_limit = freq_table[i-1].frequency;
 #endif
 }
+
+extern unsigned int no_edp_limit;
 
 static unsigned int edp_governor_speed(unsigned int requested_speed)
 {
@@ -647,12 +562,7 @@ int tegra_update_cpu_speed(unsigned long rate)
 	struct cpufreq_freqs freqs;
 	unsigned long rate_save = rate;
 	int status = 1;
-#endif
-	
-	// dont allow changes while in early suspend boost mode
-	if (in_earlysuspend)
-		return ret;
-		
+
 	freqs.old = tegra_getspeed(0);
 	freqs.new = rate;
 
@@ -833,6 +743,16 @@ module_param(mips_aggressive_factor, uint, 0644);
 EXPORT_SYMBOL (mips_aggressive_factor);
 #endif
 
+/* disable edp limitations */
+unsigned int no_edp_limit = 0;
+module_param(no_edp_limit, uint, 0644);
+EXPORT_SYMBOL (no_edp_limit);
+
+/* disable thermal throttling limitations */
+unsigned int no_thermal_throttle_limit = 0;
+module_param(no_thermal_throttle_limit, uint, 0644);
+EXPORT_SYMBOL (no_thermal_throttle_limit);
+
 // maxwen: apply all limits to a frequency
 static unsigned int get_scaled_freq (unsigned int target_freq)
 {
@@ -845,22 +765,6 @@ static unsigned int get_scaled_freq (unsigned int target_freq)
 	//pr_info("get_scaled_freq cpu %d %d %d\n", cpu, save_freq, target_freq);
     return target_freq;
 }
-
-unsigned int best_core_to_turn_up (void) {
-    /* mitigate high temperature, 0 -> 3 -> 2 -> 1 */
-    if (!cpu_online (3))
-        return 3;
-
-    if (!cpu_online (2))
-        return 2;
-
-    if (!cpu_online (1))
-        return 1;
-
-    /* NOT found, return >= nr_cpu_id */
-    return nr_cpu_ids;
-}
-EXPORT_SYMBOL(best_core_to_turn_up);
 
 #if defined(CONFIG_BEST_TRADE_HOTPLUG)
 
@@ -1126,6 +1030,22 @@ static unsigned int best_core_to_turn_down (void) {
     /* NOT found, return >= nr_cpu_id */
     return tegra_get_slowest_cpu_n ();
 }
+
+unsigned int best_core_to_turn_up (void) {
+    /* mitigate high temperature, 0 -> 3 -> 2 -> 1 */
+    if (!cpu_online (3))
+        return 3;
+
+    if (!cpu_online (2))
+        return 2;
+
+    if (!cpu_online (1))
+        return 1;
+
+    /* NOT found, return >= nr_cpu_id */
+    return nr_cpu_ids;
+}
+EXPORT_SYMBOL(best_core_to_turn_up);
 
 static unsigned int big_two_mp_adjustment (
     int i_cpu,
@@ -1997,14 +1917,12 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 {
 	int ret = 0;
     unsigned int new_speed = tegra_cpu_highest_speed();
-    unsigned int curr_speed = tegra_getspeed(0);
     
 #if defined(CONFIG_BEST_TRADE_HOTPLUG)
     unsigned int speed_wocap = 0UL;
     unsigned int speed_before_bthp = 0UL;
     unsigned int min_speed = cpu_get_min_speed (0);
     int cpu = smp_processor_id();
-  
     bool forced_kick = false;
 
     if (new_speed < min_speed) {
@@ -2034,8 +1952,10 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
          * no trade can be made on lp cluster
          */
         if (!is_lp_cluster()) {
+            unsigned int curr_speed = tegra_getspeed (cpu);
             cputime64_t now = ktime_to_ns (ktime_get ());
 
+            MF_DEBUG("00UP0035");
             /* cpu0 MUST take the kicking job,
              * when all cores' demanding perf. lowers than
              * valid G-CPU freq. range.
@@ -2048,6 +1968,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
                 forced_kick = true;
             }
 
+            MF_DEBUG("00UP0036");
             /* only who claims the highest frequency can make final deal */
             if ((target_cpu_speed[cpu] >= speed_wocap || forced_kick) &&
                 !on_plugging())
@@ -2064,6 +1985,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
                      * Don't drive speed DOWN until core plug/unplug gets done
                      * the overhead of hotplug has to be well-considered
                      */
+                    MF_DEBUG("00UP0037");
                     new_speed = _do_trade_bargain (curr_speed,
                                                    new_speed,
                                                    BTHP_DECISION (ANY)
@@ -2077,6 +1999,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
             if (speed_cap)
                 *speed_cap = new_speed;
 
+	    MF_DEBUG("00UP0038");
             /* catch up with the highest speed ASAP */
             return (curr_speed == new_speed?
                     0:
@@ -2084,18 +2007,13 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
         }
     }
 #endif
+
 	if (speed_cap)
 		*speed_cap = new_speed;
 
-	if (curr_speed == new_speed)
-		return 0;
-
-#if CPU_FREQ_DEBUG			
-	pr_info("tegra_cpu_set_speed_cap: curr_speed %d new_speed %d\n", curr_speed, new_speed);
-#endif
-
 	ret = tegra_update_cpu_speed(new_speed);
-	tegra_auto_hotplug_governor(new_speed, false);
+	if (ret == 0)
+		tegra_auto_hotplug_governor(new_speed, false);
 	return ret;
 }
 
@@ -2109,6 +2027,7 @@ int tegra_suspended_target(unsigned int target_freq)
 	/* apply only "hard" caps */
 	new_speed = tegra_throttle_governor_speed(new_speed);
 	new_speed = edp_governor_speed(new_speed);
+	new_speed = powersave_speed(new_speed);
 
 	return tegra_update_cpu_speed(new_speed);
 }
@@ -2163,6 +2082,7 @@ static int tegra_target(struct cpufreq_policy *policy,
 {
 	int idx;
 	unsigned int freq;
+	unsigned int new_speed;
 	int ret = 0;
 
 	mutex_lock(&tegra_cpu_lock);
@@ -2175,38 +2095,53 @@ static int tegra_target(struct cpufreq_policy *policy,
 	freq = freq_table[idx].frequency;
 
 	target_cpu_speed[policy->cpu] = freq;
-	ret = tegra_cpu_set_speed_cap(NULL);
+	ret = tegra_cpu_set_speed_cap(&new_speed);
 _out:
 	mutex_unlock(&tegra_cpu_lock);
 
 	return ret;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+/* put early_suspend/late_resume handlers here for the display in order
+ * to keep the code out of the display driver, keeping it closer to upstream
+ */
+struct early_suspend tegra_cpufreq_early_suspender;
+static struct pm_qos_request_list boost_cpu_freq_req;
+static struct pm_qos_request_list cap_cpu_freq_req;
+
+#endif
+
+#if 0
+static int enter_early_suspend = 0;
+#endif
+
 static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	// must be outside of mutex!
-	if (event == PM_SUSPEND_PREPARE) {
-		tegra_cancel_delayed_suspend_work();
-	}
-#endif
-	
 	mutex_lock(&tegra_cpu_lock);
 	if (event == PM_SUSPEND_PREPARE) {
 		unsigned int freq;
 		is_suspended = true;
 		freq=freq_table[suspend_index].frequency;
-		pr_info("tegra_pm_notify: suspend: setting frequency to %d kHz\n", freq);
+		pr_info("tegra_pm_notify: cpufreq suspend: setting frequency to %d kHz\n",
+			freq);
 		tegra_update_cpu_speed(freq);
 		tegra_auto_hotplug_governor(freq, true);
+#if 0
+		for_each_online_cpu(cpu) {
+			if(cpu==0)
+				continue;
+			cpu_down(cpu);
+		}
+#endif
 	} else if (event == PM_POST_SUSPEND) {
 		unsigned int freq;
 		is_suspended = false;
 		tegra_cpu_edp_init(true);
 		
 		tegra_cpu_set_speed_cap(&freq);
-		pr_info("tegra_pm_notify: resume: restoring frequency to %d kHz\n", freq);
+		pr_info("tegra_pm_notify: cpufreq resume: restoring frequency to %d kHz\n", freq);
 	}
 	mutex_unlock(&tegra_cpu_lock);
 	return NOTIFY_OK;
@@ -2472,29 +2407,14 @@ static int __init tegra_cpufreq_init(void)
 	tegra_cpufreq_early_suspender.resume = tegra_cpufreq_late_resume;
 	tegra_cpufreq_early_suspender.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 100;
 	register_early_suspend(&tegra_cpufreq_early_suspender);
-
-	// to get max boost for the complete suspend and resume time
-	tegra_cpufreq_performance_early_suspender.suspend = tegra_cpufreq_performance_early_suspend;
-	tegra_cpufreq_performance_early_suspender.resume = tegra_cpufreq_performance_late_resume;
-	tegra_cpufreq_performance_early_suspender.level = 0;
-	register_early_suspend(&tegra_cpufreq_performance_early_suspender);
-	
-	suspend_delay = msecs_to_jiffies(SUSPEND_DELAY_MS);
-	suspend_wq = alloc_workqueue(
-		"suspend_wq", WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
-
-	if (!suspend_wq)
-		return -ENOMEM;
-
-	INIT_DELAYED_WORK(&suspend_work, tegra_delayed_suspend_work);
 #endif
+
 
 	ret = cpufreq_register_notifier(
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
-	if (ret){
-		destroy_workqueue(suspend_wq);
+	if (ret)
 		return ret;
-	}
+
 	return cpufreq_register_driver(&tegra_cpufreq_driver);
 }
 
@@ -2504,14 +2424,10 @@ static void __exit tegra_cpufreq_exit(void)
 	tegra_cpu_edp_exit();
 	tegra_auto_hotplug_exit();
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	pm_qos_remove_request(&cap_cpu_freq_req);
-	pm_qos_remove_request(&cap_cpu_num_req);
 	pm_qos_remove_request(&boost_cpu_freq_req);
-			
-	unregister_early_suspend(&tegra_cpufreq_performance_early_suspender);
+	pm_qos_remove_request(&cap_cpu_freq_req);
+		
 	unregister_early_suspend(&tegra_cpufreq_early_suspender);
-	
-	destroy_workqueue(suspend_wq);
 #endif
 	cpufreq_unregister_driver(&tegra_cpufreq_driver);
 	cpufreq_unregister_notifier(
