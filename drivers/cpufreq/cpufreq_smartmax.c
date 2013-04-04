@@ -48,7 +48,7 @@
  * towards the ideal frequency and slower after it has passed it. Similarly,
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
-#define DEFAULT_IDEAL_FREQ T3_LP_MAX_FREQ
+#define DEFAULT_IDEAL_FREQ 475000
 static unsigned int ideal_freq;
 
 /*
