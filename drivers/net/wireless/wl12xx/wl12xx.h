@@ -38,13 +38,13 @@
 #include "conf.h"
 #include "ini.h"
 
-#define WL127X_FW_NAME_MULTI	"ti-connectivity/wl127x-fw-4-mr.bin"
-#define WL127X_FW_NAME_SINGLE	"ti-connectivity/wl127x-fw-4-sr.bin"
-#define WL127X_PLT_FW_NAME	"ti-connectivity/wl127x-fw-4-plt.bin"
+#define WL127X_FW_NAME_MULTI	"ti-connectivity/wl127x-tripndroid-mr.bin"
+#define WL127X_FW_NAME_SINGLE	"ti-connectivity/wl127x-tripndroid-sr.bin"
+#define WL127X_PLT_FW_NAME	"ti-connectivity/wl127x-tripndroid-plt.bin"
 
-#define WL128X_FW_NAME_MULTI	"ti-connectivity/wl128x-fw-4-mr.bin"
-#define WL128X_FW_NAME_SINGLE	"ti-connectivity/wl128x-fw-4-sr.bin"
-#define WL128X_PLT_FW_NAME	"ti-connectivity/wl128x-fw-4-plt.bin"
+#define WL128X_FW_NAME_MULTI	"ti-connectivity/tripndroid-mr.bin"
+#define WL128X_FW_NAME_SINGLE	"ti-connectivity/tripndroid-sr.bin"
+#define WL128X_PLT_FW_NAME	"ti-connectivity/tripndroid-plt.bin"
 
 /*
  * wl127x and wl128x are using the same NVS file name. However, the
@@ -52,9 +52,6 @@
  * the correct NVS size in wl1271_boot_upload_nvs().
  */
 #define WL12XX_NVS_NAME "ti-connectivity/wl1271-nvs.bin"
-
-#define WL12XX_NVS_NAME_CALIBRATED "../../../data/misc/wifi/wl1271-nvs-calibrated.bin"
-#define WL12XX_NVS_NAME_CALIBRATED_AUTO "../../../data/misc/wifi/wl1271-nvs-calibrated_auto.bin"
 
 #define WL1271_TX_SECURITY_LO16(s) ((u16)((s) & 0xffff))
 #define WL1271_TX_SECURITY_HI32(s) ((u32)(((s) >> 16) & 0xffffffff))
@@ -103,9 +100,6 @@
 #define WL1271_AGGR_BUFFER_SIZE (4 * PAGE_SIZE)
 
 #define NUM_MAC_ADDRESSES          3
-
-/* wl12xx maximum transmission power (in dBm) */
-#define WL12XX_MAX_TX_POWER        25
 
 enum wlcore_state {
 	WLCORE_STATE_OFF,

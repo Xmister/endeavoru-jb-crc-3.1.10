@@ -303,6 +303,7 @@ struct acx_bt_wlan_coex_param {
 	u8 padding[3];
 } __packed;
 
+
 struct acx_dco_itrim_params {
 	struct acx_header header;
 
