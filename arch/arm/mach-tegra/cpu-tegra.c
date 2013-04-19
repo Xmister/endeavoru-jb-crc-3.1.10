@@ -66,10 +66,10 @@ unsigned int tegra_pmqos_cpu_freq_limits[CONFIG_NR_CPUS] = {0, 0, 0, 0};
 
 #if 0
 extern unsigned int get_powersave_freq();
-#endif
 /* Symbol to store resume resume */
 extern unsigned long long wake_reason_resume;
 struct work_struct htc_suspend_resume_work;
+#endif
 
 /* tegra throttling and edp governors require frequencies in the table
    to be in ascending order */
@@ -2284,6 +2284,8 @@ static void tegra_cpufreq_late_resume(struct early_suspend *h)
 
 #endif
 
+//maxwen: dont think we need this 
+#if 0
 static void htc_suspend_resume_worker(struct work_struct *w)
 {
 	pr_info("htc_suspend_resume_worker: Release early suspend CPU cap by RIL!");
@@ -2293,17 +2295,21 @@ static void htc_suspend_resume_worker(struct work_struct *w)
 	pm_qos_update_request(&boost_cpu_freq_req, (s32)tegra_pmqos_boost_freq);
 	tegra_update_cpu_speed(tegra_pmqos_boost_freq);
 }
+#endif
 
 static int ril_boost = 0;
 
 static int ril_boost_set(const char *arg, const struct kernel_param *kp)
 {
-	return schedule_work(&htc_suspend_resume_work);
+	pr_info("ril_boost not supported\n");
+	return 0;
+	//return schedule_work(&htc_suspend_resume_work);
 }
 
 static int ril_boost_get(char *buffer, const struct kernel_param *kp)
 {
-	return param_get_uint(buffer, kp);
+	return 0;
+	//return param_get_uint(buffer, kp);
 }
 
 
@@ -2388,7 +2394,9 @@ static int __init tegra_cpufreq_init(void)
 	freq_table = table_data->freq_table;
 	tegra_cpu_edp_init(false);
 
+#if 0
 	INIT_WORK(&htc_suspend_resume_work, htc_suspend_resume_worker);
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
