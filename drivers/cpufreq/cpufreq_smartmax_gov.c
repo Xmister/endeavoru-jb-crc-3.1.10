@@ -27,10 +27,10 @@
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
 
-#define DEFAULT_SUSPEND_IDEAL_FREQ 340000
+#define DEFAULT_SUSPEND_IDEAL_FREQ 475000
 static unsigned int suspend_ideal_freq;
 
-#define DEFAULT_AWAKE_IDEAL_FREQ 340000
+#define DEFAULT_AWAKE_IDEAL_FREQ 475000
 static unsigned int awake_ideal_freq;
 
 /*
@@ -38,7 +38,7 @@ static unsigned int awake_ideal_freq;
  * Zero disables and causes to always jump straight to max frequency.
  * When below the ideal freqeuncy we always ramp up to the ideal freq.
  */
-#define DEFAULT_RAMP_UP_STEP 250000
+#define DEFAULT_RAMP_UP_STEP 300000
 static unsigned int ramp_up_step;
 
 /*
@@ -46,44 +46,44 @@ static unsigned int ramp_up_step;
  * Zero disables and will calculate ramp down according to load heuristic.
  * When above the ideal freqeuncy we always ramp down to the ideal freq.
  */
-#define DEFAULT_RAMP_DOWN_STEP 250000
+#define DEFAULT_RAMP_DOWN_STEP 150000
 static unsigned int ramp_down_step;
 
 /*
  * CPU freq will be increased if measured load > max_cpu_load;
  */
-#define DEFAULT_MAX_CPU_LOAD 75
+#define DEFAULT_MAX_CPU_LOAD 80
 static unsigned int max_cpu_load;
 
 /*
  * CPU freq will be decreased if measured load < min_cpu_load;
  */
-#define DEFAULT_MIN_CPU_LOAD 40
+#define DEFAULT_MIN_CPU_LOAD 50
 static unsigned int min_cpu_load;
 
 /*
  * The minimum amount of time in nsecs to spend at a frequency before we can ramp up.
  * Notice we ignore this when we are below the ideal frequency.
  */
-#define DEFAULT_UP_RATE 20000
+#define DEFAULT_UP_RATE 50000
 static unsigned int up_rate;
 
 /*
  * The minimum amount of time in nsecs to spend at a frequency before we can ramp down.
  * Notice we ignore this when we are above the ideal frequency.
  */
-#define DEFAULT_DOWN_RATE 40000
+#define DEFAULT_DOWN_RATE 100000
 static unsigned int down_rate;
 
 /* in nsecs */
-#define DEFAULT_SAMPLING_RATE 30000
+#define DEFAULT_SAMPLING_RATE 50000
 static unsigned int sampling_rate;
 
 /* in nsecs */
 #define DEFAULT_INPUT_BOOST_DURATION 50000000
 static unsigned int input_boost_duration;
 
-static unsigned int touch_poke_freq = 640000;
+static unsigned int touch_poke_freq = 760000;
 static bool touch_poke = true;
 
 /*
@@ -108,15 +108,15 @@ static unsigned int io_is_busy;
 #define DEFAULT_IGNORE_NICE 1
 static unsigned int ignore_nice;
 
-#define GOVERNOR_NAME "pmc"
-#define STRUCT_NAME cpufreq_gov_pmc
+#define GOVERNOR_NAME "smartmax"
+#define STRUCT_NAME cpufreq_gov_smartmax
 
 /*************** End of tunables ***************/
 
 static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
 		unsigned int event);
 
-#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_PMC
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
 static
 #endif
 struct cpufreq_governor STRUCT_NAME = { .name = GOVERNOR_NAME, .governor =
@@ -125,7 +125,7 @@ struct cpufreq_governor STRUCT_NAME = { .name = GOVERNOR_NAME, .governor =
 
 #include "cpufreq_smartmax.c"
 
-#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_PMC
+#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
 fs_initcall(cpufreq_smartmax_init);
 #else
 module_init(cpufreq_smartmax_init);
