@@ -30,7 +30,7 @@
 #define DEFAULT_SUSPEND_IDEAL_FREQ 340000
 static unsigned int suspend_ideal_freq;
 
-#define DEFAULT_AWAKE_IDEAL_FREQ 340000
+#define DEFAULT_AWAKE_IDEAL_FREQ 475000
 static unsigned int awake_ideal_freq;
 
 /*
@@ -38,7 +38,7 @@ static unsigned int awake_ideal_freq;
  * Zero disables and causes to always jump straight to max frequency.
  * When below the ideal freqeuncy we always ramp up to the ideal freq.
  */
-#define DEFAULT_RAMP_UP_STEP 250000
+#define DEFAULT_RAMP_UP_STEP 300000
 static unsigned int ramp_up_step;
 
 /*
@@ -46,7 +46,7 @@ static unsigned int ramp_up_step;
  * Zero disables and will calculate ramp down according to load heuristic.
  * When above the ideal freqeuncy we always ramp down to the ideal freq.
  */
-#define DEFAULT_RAMP_DOWN_STEP 250000
+#define DEFAULT_RAMP_DOWN_STEP 200000
 static unsigned int ramp_down_step;
 
 /*
@@ -72,11 +72,11 @@ static unsigned int up_rate;
  * The minimum amount of time in nsecs to spend at a frequency before we can ramp down.
  * Notice we ignore this when we are above the ideal frequency.
  */
-#define DEFAULT_DOWN_RATE 40000
+#define DEFAULT_DOWN_RATE 60000
 static unsigned int down_rate;
 
 /* in nsecs */
-#define DEFAULT_SAMPLING_RATE 30000
+#define DEFAULT_SAMPLING_RATE 20000
 static unsigned int sampling_rate;
 
 /* in nsecs */
