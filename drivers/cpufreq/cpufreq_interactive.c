@@ -34,6 +34,10 @@
 
 static atomic_t active_count = ATOMIC_INIT(0);
 
+#ifdef CONFIG_BUILD_FOR_SENSE
+extern bool calibration_control;
+#endif
+
 struct cpufreq_interactive_cpuinfo {
 	struct timer_list cpu_timer;
 	int timer_idlecancel;
@@ -765,6 +769,10 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (!policy->cpu)
 			rc = input_register_handler(&dbs_input_handler);
 
+#ifdef CONFIG_BUILD_FOR_SENSE		
+		calibration_control = false;
+#endif
+		
 		break;
 
 	case CPUFREQ_GOV_STOP:

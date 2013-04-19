@@ -1059,7 +1059,9 @@ static int FUNC_NAME(struct cpufreq_policy *new_policy,
 		mutex_unlock(&dbs_mutex);
 		mutex_init(&this_smartmax->timer_mutex);
 		dbs_timer_init(this_smartmax);
-
+#ifdef CONFIG_BUILD_FOR_SENSE
+		calibration_control = true;
+#endif
 		break;
 	case CPUFREQ_GOV_LIMITS:
 		mutex_lock(&this_smartmax->timer_mutex);

@@ -115,6 +115,10 @@ static unsigned int ignore_nice;
 
 /*************** End of tunables ***************/
 
+#ifdef CONFIG_BUILD_FOR_SENSE
+extern bool calibration_control;
+#endif
+
 static int FUNC_NAME(struct cpufreq_policy *policy,
 		unsigned int event);
 

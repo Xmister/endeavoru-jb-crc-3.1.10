@@ -199,7 +199,11 @@ void sweep2wake_pwrtrigger(void) {
 
 static bool touchDebug = false;
 
-static bool calibration_control = true;
+#ifdef CONFIG_BUILD_FOR_SENSE
+bool calibration_control = true;
+#else
+bool calibration_control = false;
+#endif
 
 static void syn_page_select(struct i2c_client *client, uint8_t page)
 {
