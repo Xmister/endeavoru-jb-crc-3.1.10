@@ -995,6 +995,10 @@ static void smartmax_late_resume(struct early_suspend *h)
 }
 #endif
 
+#ifdef CONFIG_BUILD_FOR_SENSE
+extern bool calibration_control;
+#endif
+
 static int FUNC_NAME(struct cpufreq_policy *new_policy,
 		unsigned int event) {
 	unsigned int cpu = new_policy->cpu;
