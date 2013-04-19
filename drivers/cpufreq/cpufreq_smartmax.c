@@ -855,7 +855,7 @@ static struct attribute * smartmax_attributes[] = {
 	NULL , };
 
 static struct attribute_group smartmax_attr_group = { .attrs =
-		smartmax_attributes, .name = "smartmax", };
+		smartmax_attributes, .name = GOVERNOR_NAME, };
 
 static int cpufreq_smartmax_boost_task(void *data) {
 	//struct cpufreq_policy *policy;
@@ -975,7 +975,7 @@ static const struct input_device_id dbs_ids[] = { { .driver_info = 1 }, { }, };
 
 static struct input_handler dbs_input_handler = { .event = dbs_input_event,
 		.connect = dbs_input_connect, .disconnect = dbs_input_disconnect,
-		.name = "cpufreq_smartmax", .id_table = dbs_ids, };
+		.name = CPUFR_NAME, .id_table = dbs_ids, };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void smartmax_early_suspend(struct early_suspend *h)
@@ -995,7 +995,7 @@ static void smartmax_late_resume(struct early_suspend *h)
 }
 #endif
 
-static int cpufreq_governor_smartmax(struct cpufreq_policy *new_policy,
+static int FUNC_NAME(struct cpufreq_policy *new_policy,
 		unsigned int event) {
 	unsigned int cpu = new_policy->cpu;
 	int rc;

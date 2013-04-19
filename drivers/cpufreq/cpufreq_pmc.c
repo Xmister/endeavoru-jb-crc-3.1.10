@@ -110,17 +110,19 @@ static unsigned int ignore_nice;
 
 #define GOVERNOR_NAME "pmc"
 #define STRUCT_NAME cpufreq_gov_pmc
+#define FUNC_NAME cpufreq_governor_pmc
+#define CPUFR_NAME "cpufreq_pmc"
 
 /*************** End of tunables ***************/
 
-static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
+static int FUNC_NAME(struct cpufreq_policy *policy,
 		unsigned int event);
 
 #ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_PMC
 static
 #endif
 struct cpufreq_governor STRUCT_NAME = { .name = GOVERNOR_NAME, .governor =
-		cpufreq_governor_smartmax, .max_transition_latency = 9000000, .owner =
+		FUNC_NAME, .max_transition_latency = 9000000, .owner =
 		THIS_MODULE , };
 
 #include "cpufreq_smartmax.c"
@@ -132,7 +134,7 @@ module_init(cpufreq_smartmax_init);
 #endif
 
 static void __exit cpufreq_smartmax_exit(void) {
-	cpufreq_unregister_governor(&cpufreq_gov_smartmax);
+	cpufreq_unregister_governor(&STRUCT_NAME);
 }
 
 module_exit(cpufreq_smartmax_exit);
