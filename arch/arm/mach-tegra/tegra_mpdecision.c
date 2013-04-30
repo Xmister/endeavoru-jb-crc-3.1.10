@@ -46,13 +46,12 @@
 
 #define DEBUG 0
 
+extern unsigned int best_core_to_turn_up (void);
+
 #define MPDEC_TAG                       "[MPDEC]: "
 #define TEGRA_MPDEC_STARTDELAY            20000
 #define TEGRA_MPDEC_DELAY                 70
 #define TEGRA_MPDEC_PAUSE                 10000
-
-/* will be overwritten later by lpcpu max clock */
-#define TEGRA_MPDEC_IDLE_FREQ             475000
 
 /* This rq value will be used if we only have the lpcpu online */
 #define TEGRA_MPDEC_LPCPU_RQ_DOWN         36
@@ -61,7 +60,7 @@
  * This will replace TEGRA_MPDEC_DELAY in each case.
  */
 #define TEGRA_MPDEC_LPCPU_UPDELAY         70
-#define TEGRA_MPDEC_LPCPU_DOWNDELAY       750
+#define TEGRA_MPDEC_LPCPU_DOWNDELAY       2000
 
 /*
  * LPCPU hysteresis default values
@@ -112,7 +111,7 @@ static struct tegra_mpdec_tuners {
 	.startdelay = TEGRA_MPDEC_STARTDELAY,
 	.delay = TEGRA_MPDEC_DELAY,
 	.pause = TEGRA_MPDEC_PAUSE,
-	.idle_freq = TEGRA_MPDEC_IDLE_FREQ,
+	.idle_freq = T3_LP_MAX_FREQ,
         .lp_cpu_up_hysteresis = TEGRA_MPDEC_LPCPU_UP_HYS,
         .lp_cpu_down_hysteresis = TEGRA_MPDEC_LPCPU_DOWN_HYS,
         .max_cpus = CONFIG_NR_CPUS,
@@ -124,7 +123,6 @@ static struct clk *cpu_g_clk;
 static struct clk *cpu_lp_clk;
 
 static unsigned int idle_top_freq;
-static unsigned int idle_bottom_freq;
 
 static unsigned int NwNs_Threshold[8] = {16, 10, 24, 12, 30, 16, 0, 18};
 static unsigned int TwTs_Threshold[8] = {140, 0, 140, 190, 140, 190, 0, 190};
@@ -208,21 +206,6 @@ static bool lp_possible(void)
 		return false;
 
 	return true;
-}
-
-static unsigned int best_core_to_turn_up (void) {
-    /* mitigate high temperature, 0 -> 3 -> 2 -> 1 */
-    if (!cpu_online (3))
-        return 3;
-
-    if (!cpu_online (2))
-        return 2;
-
-    if (!cpu_online (1))
-        return 1;
-
-    /* NOT found, return >= nr_cpu_id */
-    return nr_cpu_ids;
 }
 
 static int mp_decision(void)
@@ -334,8 +317,7 @@ static int tegra_lp_cpu_handler(bool state, bool notifier)
         case true:
                 if(!clk_set_parent(cpu_clk, cpu_lp_clk)) {
                         /* catch-up with governor target speed */
-                        /* leave it for the governor
-			tegra_cpu_set_speed_cap(NULL);*/
+                        tegra_cpu_set_speed_cap(NULL);
 
                         pr_info(MPDEC_TAG"CPU[LP] off->on | Mask=[%d.%d%d%d%d]\n",
                                 is_lp_cluster(), ((is_lp_cluster() == 1) ? 0 : cpu_online(0)),
@@ -350,8 +332,7 @@ static int tegra_lp_cpu_handler(bool state, bool notifier)
         case false:
                 if (!clk_set_parent(cpu_clk, cpu_g_clk)) {
                         /* catch-up with governor target speed */
-			/* leave it for the governor
-                        tegra_cpu_set_speed_cap(NULL);*/
+                        tegra_cpu_set_speed_cap(NULL);
 
                         on_time = ktime_to_ms(ktime_get()) - tegra_mpdec_lpcpudata.on_time;
                         tegra_mpdec_lpcpudata.online = false;
@@ -600,8 +581,11 @@ static void tegra_mpdec_early_suspend(struct early_suspend *h)
 	}
 
         /* main work thread can sleep now */
+        // maxwen: TODO added for debugging purposes
+        pr_info("maxwen: before cancel_delayed_work_sync(&tegra_mpdec_work)");
         cancel_delayed_work_sync(&tegra_mpdec_work);
-
+        pr_info("maxwen: after cancel_delayed_work_sync(&tegra_mpdec_work)");
+        
         if ((lp_possible()) && (!is_lp_cluster())) {
                 if(!tegra_lp_cpu_handler(true, false))
                         pr_err(MPDEC_TAG"CPU[LP] error, cannot power up.\n");
@@ -997,6 +981,12 @@ static struct notifier_block max_cpus_notifier = {
 	.notifier_call = max_cpus_notify,
 };
 
+void tegra_lpmode_freq_max_changed(void)
+{
+	idle_top_freq = tegra_lpmode_freq_max();
+	pr_info(MPDEC_TAG "%s: idle_top_freq = %d\n", __func__, idle_top_freq);
+}
+
 static int __init tegra_mpdec_init(void)
 {
 	int cpu, rc, err = 0;
@@ -1008,11 +998,10 @@ static int __init tegra_mpdec_init(void)
 	if (IS_ERR(cpu_clk) || IS_ERR(cpu_g_clk) || IS_ERR(cpu_lp_clk))
 		return -ENOENT;
 
-	idle_top_freq = clk_get_max_rate(cpu_lp_clk) / 1000;
-	idle_bottom_freq = clk_get_min_rate(cpu_g_clk) / 1000;
+	idle_top_freq = tegra_lpmode_freq_max();
 
-        /* overwrite idle frequency with lpcpu max clock */
-        tegra_mpdec_tuners_ins.idle_freq = idle_top_freq;
+    /* overwrite idle frequency with lpcpu max clock */
+    tegra_mpdec_tuners_ins.idle_freq = idle_top_freq;
 
 	for_each_possible_cpu(cpu) {
 		mutex_init(&(per_cpu(tegra_mpdec_cpudata, cpu).suspend_mutex));
@@ -1020,7 +1009,7 @@ static int __init tegra_mpdec_init(void)
 		per_cpu(tegra_mpdec_cpudata, cpu).online = true;
 	}
 
-        was_paused = true;
+	was_paused = true;
 
 	tegra_mpdec_workq = alloc_workqueue(
 		"mpdec", WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);

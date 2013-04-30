@@ -110,7 +110,7 @@ int __init parse_tag_IMEI(const struct tag *tags)
 		}
 	}
 	if (!find) {
-		printk(KERN_ERR "[IMEI] parse_tag_IMEI(): error: IMEI ATAG not found\n", IMEI);
+		printk(KERN_ERR "[IMEI] parse_tag_IMEI(): error: IMEI ATAG not found %s\n", IMEI);
 		return -1;
 	}
 	else {
@@ -142,7 +142,7 @@ static ssize_t IMEI_read(struct file *file, char __user *buf, size_t len, loff_t
 }
 
 static const struct file_operations IMEI_file_ops = {
-	.owner = "system",
+	.owner = THIS_MODULE,
 	.read = IMEI_read,
 };
 
@@ -439,6 +439,7 @@ int __init board_mfg_mode_init(char *s)
 	else if (!strcmp(s, "modem_calibration"))
 		mfg_mode = BOARD_MFG_MODE_MODEM_CALIBRATION;
 
+	printk(KERN_INFO "mfg_mode %d\n", mfg_mode);
 	return 1;
 }
 
@@ -588,15 +589,17 @@ int __init parse_tag_skuid(const struct tag *tags)
 	}
 
 	if (find) {
-		unsigned char *dptr = (unsigned char *)(&t->u);
-		memcpy(SKUID, dptr, 16);
-
-		unsigned int sku_id_int = 0;
-		char *ptr = SKUID + sizeof(SKUID) - 1;
 		int rate = 1;
 		int index= 0;
+		char *ptr;
+		unsigned int sku_id_int = 0;
+		unsigned char *dptr = (unsigned char *)(&t->u);
+
+		memcpy(SKUID, dptr, 16);
+
+		ptr = SKUID + sizeof(SKUID) - 1;
 		for (index = 0;index < sizeof(SKUID);index++) {
-			if (NULL == *ptr) {
+			if (0 == *ptr) {
 				ptr--;
 				continue;
 			}
@@ -636,7 +639,7 @@ static ssize_t SKUID_read(struct file *file, char __user *buf,
 }
 
 static const struct file_operations SKUID_file_ops = {
-	.owner = "system",
+	.owner = THIS_MODULE,
 	.read = SKUID_read,
 };
 
@@ -1008,7 +1011,7 @@ static int reboot_callback(struct notifier_block *nb,
 
 	cmd = (char*) (data ? data : "");
 	pr_info("kernel_restart(cmd=%s) - triggered with task: %s (%d:%d)\n",
-			data ? data : "<null>",
+			data ? (char *)data : "<null>",
 			current->comm, current->tgid, current->pid);
 	pr_info("parents of %s:\n", current->comm);
 	t = current->parent;
@@ -1050,25 +1053,6 @@ static int __init htc_reset_reason_init(void)
 	return 0;
 }
 arch_initcall(htc_reset_reason_init);
-
-static int __cpuinit debug_cpu_toggle_notify(struct notifier_block *self,
-		unsigned long action, void *hcpu)
-{
-	MF_DEBUG("00UP0007");
-	switch (action) {
-	case CPU_ONLINE:
-	case CPU_DEAD:
-		pr_info("[CPUHP] current online: %d%d%d%d\n",
-				cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
-	}
-	return NOTIFY_OK;
-}
-static int __init htc_debug_cpu_toggle_init(void)
-{
-	hotcpu_notifier(debug_cpu_toggle_notify, 0);
-	return 0;
-}
-late_initcall(htc_debug_cpu_toggle_init);
 
 unsigned get_last_reboot_params_battery_level(void)
 {

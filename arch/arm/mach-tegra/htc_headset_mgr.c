@@ -24,13 +24,10 @@
 #include <linux/slab.h>
 #include <linux/termios.h>
 #include <linux/tty.h>
-#include <mach/mfootprint.h>
 #include "devices.h"
 
 #include <mach/htc_headset_mgr.h>
 #include <linux/delay.h>
-
-#include <linux/kobject.h>
 
 #include "../../../sound/soc/codecs/tlv320aic3008.h"
 
@@ -88,41 +85,6 @@ static struct regulator *regulator;
 static struct button_work *key_event[HS_BUTTON_EVENT_QUEUE];
 static int key_event_flag;
 static int uart_check = 0;
-
-struct kobject *pabx_h2wf_kobj;
-static unsigned short pabx_h2wf_val = 0;
-static int pabx_h2wf_lastplug_value = 0;
-
-int hs_notify_plug_event_work(int insert);
-
-static ssize_t pabx_h2wf_show(struct kobject *kobj, struct kobj_attribute *attr,
-			 char *buf)
-{
-	return sprintf(buf, "%hu\n", pabx_h2wf_val);
-}
-
-static ssize_t pabx_h2wf_store(struct kobject *kobj, struct kobj_attribute *attr,
-			  const char * buf, size_t n)
-{
-	unsigned short value;
-	if (sscanf(buf, "%hu", &value) != 1)
-		return -EINVAL;
-
-	pabx_h2wf_val = value;
-	
-	if(pabx_h2wf_val != 0 && hi->is_ext_insert == 0) /* simulate inserted headphone */
-		hs_notify_plug_event_work(1);
-	
-	if(pabx_h2wf_val == 0 && pabx_h2wf_lastplug_value != hi->is_ext_insert)  /* re-fire last real hw-state */
-		hs_notify_plug_event(pabx_h2wf_lastplug_value);
-	
-	return n;
-}
-
-static struct kobj_attribute pabx_h2wf_attr =
-	__ATTR(pabx_h2w_forced, 0644, pabx_h2wf_show, pabx_h2wf_store);
-
-
 
 static void init_next_driver(void)
 {
@@ -1006,29 +968,12 @@ static void insert_detect_work_func(struct work_struct *work)
 
 int hs_notify_plug_event(int insert)
 {
-	HS_LOG("pabx: REAL Headset status %d", insert);
+	int ret = 0;
+	HS_DBG("Headset status %d", insert);
 
-	pabx_h2wf_lastplug_value = insert;
-
-	if(pabx_h2wf_val == 0) {
-		HS_LOG("pabx: sending plug event to _work func");
-		hs_notify_plug_event_work(insert);
-	}
-	else {
-		HS_LOG("pabx: keeping plug event hidden");
-	}
-
-	return 1;
-}
-
-int hs_notify_plug_event_work(int insert)
-{
-	int ret;
 	mutex_lock(&hi->mutex_lock);
 	hi->is_ext_insert = insert;
 	mutex_unlock(&hi->mutex_lock);
-
-	HS_LOG("pabx: working with headset state=%d", hi->is_ext_insert);
 
 	ret = cancel_delayed_work_sync(&mic_detect_work);
 	if (ret)
@@ -1932,9 +1877,7 @@ static void headset_mgr_init(void)
 
 static void htc_headset_mgr_early_suspend(struct early_suspend *h)
 {
-	MF_DEBUG("00260000");
 	HS_DBG();
-	MF_DEBUG("00260001");
 }
 
 static void htc_headset_mgr_late_resume(struct early_suspend *h)
@@ -2184,17 +2127,9 @@ static struct platform_driver htc_headset_mgr_driver = {
 
 
 static int __init htc_headset_mgr_init(void)
-{
-	int rc;
-
-	if (board_mfg_mode() == BOARD_MFG_MODE_OFFMODE_CHARGING)
+{	if (board_mfg_mode() == BOARD_MFG_MODE_OFFMODE_CHARGING)
 		return 0;
 	HS_LOG("INIT");
-	
-	rc = sysfs_create_file(kernel_kobj, &pabx_h2wf_attr.attr);
-	if (rc)
-		HS_LOG("failed to create pabx_h2wf sysfs file!");
-
 	return platform_driver_register(&htc_headset_mgr_driver);
 }
 

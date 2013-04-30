@@ -26,16 +26,55 @@
  */
 
 /* in kHz */
-#define BOOST_CPU_FREQ_MIN	1300000
-#define CAP_CPU_FREQ_MAX	475000
-#define T3_CPU_MIN_FREQ     51000
+#define T3_CPU_FREQ_MAX_0		1700000
+#define T3_CPU_FREQ_MAX			1600000
+#define T3_CPU_FREQ_MAX_OC		1700000
+/* any caps will be respected */
+#define T3_CPU_FREQ_BOOST		1600000
+#define T3_CPU_MIN_FREQ     	51000
+#define T3_SUSPEND_FREQ     	475000
+#define T3_GMODE_MIN_FREQ     	340000
 
-#define MIN_CPU_MV 725
-#define MAX_CPU_MV 1300
-#define MIN_CORE_MV 900
-#define MAX_CORE_MV 1400
+// used for governors ideal or idle freq
+#define GOV_IDLE_FREQ     		475000
 
-extern unsigned int tegra_pmqos_boost_freq;
-extern unsigned int tegra_pmqos_cap_freq;
+// sysfs to change available
+#define SUSPEND_CPU_NUM_MAX		2
+
+// f_mtp.c
+#define MTP_CPU_FREQ_MIN 1150000
+#define MTP_ONLINE_CPUS_MIN 2
+
+// tlv320aic3008.c - sysfs to change available
+#define AUD_CPU_FREQ_MIN 102000
+
+// android.c
+#define USB_TP_CPU_FREQ_MIN 475000
+
+// tegra_udc.h 
+#define TEGRA_GADGET_CPU_FREQ_MIN 475000
+
+// tegra_hsuart.c - not automatic must be enabled via sysfs
+// we dont need that on enrc2b
+#define TI_A2DP_CPU_FREQ_MIN 102000
+
+// tegra_hsuart_brcm.c - not automatic must be enabled via sysfs
+// sysfs to change available
+#define A2DP_CPU_FREQ_MIN 204000
+#define OPP_CPU_FREQ_MIN 475000
+
+// wl_android.c
+#define WIFI_CPU_FREQ_MIN 1150000
+#define WIFI_ONLINE_CPUS_MIN 2
+
+// usbnet.c
+#define USBNET_CPU_FREQ_MIN 475000
+#define USBNET_ONLINE_CPUS_MIN 2
+
 extern unsigned int tegra_pmqos_cpu_freq_limits[];
-extern unsigned int miss_freq_set;
+extern unsigned int tegra_pmqos_cpu_freq_limits_min[];
+extern unsigned int tegra_cpu_freq_max(unsigned int cpu);
+extern unsigned int tegra_get_suspend_boost_freq(void);
+extern unsigned int tegra_lpmode_freq_max(void);
+extern void tegra_lpmode_freq_max_changed(void);
+

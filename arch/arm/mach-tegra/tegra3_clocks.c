@@ -40,8 +40,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "tegra3_emc.h"
-
-#include <mach/mfootprint.h>
+#include "tegra_pmqos.h"
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
@@ -850,14 +849,16 @@ static int tegra3_cpu_clk_set_rate(struct clk *c, unsigned long rate)
      * to port to any other platforms,
      * pls. modify lt_rate to lt_rate[NR_CPUS] accordingly
      */
+#if defined(CONFIG_BEST_TRADE_HOTPLUG)
     static unsigned long lt_rate = 0;
+#endif
 
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
 		else if ((!c->dvfs->dvfs_rail->reg) &&
 			  (clk_get_rate_locked(c) < rate)) {
-			WARN(1, "Increasing CPU rate while regulator is not"
+			pr_debug("Increasing CPU rate while regulator is not"
 				" ready may overclock CPU\n");
 			return -ENOSYS;
 		}
@@ -1075,9 +1076,9 @@ static int tegra3_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		if (p == c->parent)		/* already switched - exit*/
 			return 0;
 
-		if (rate > p->max_rate) {	/* over-clocking - no switch */
-			pr_warn("%s: No %s mode switch to %s at rate %lu max rate %lu\n",
-				 __func__, c->name, p->name, rate, p->max_rate);
+		if ((rate > p->max_rate) || (rate < p->min_rate)) {
+			pr_info("%s: No %s mode switch to %s at rate %lu\n",
+				 __func__, c->name, p->name, rate);
 			return -ECANCELED;
 		}
 		flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
@@ -1646,6 +1647,7 @@ static int tegra3_pll_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, p_div, old_base;
 	unsigned long input_rate;
+	unsigned long flags = 0;
 	const struct clk_pll_freq_table *sel;
 	struct clk_pll_freq_table cfg;
 
@@ -1758,21 +1760,17 @@ static int tegra3_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	if (val == old_base)
 		return 0;
 
-	MF_DEBUG("00000000");
 	if (c->state == ON) {
 		tegra3_pll_clk_disable(c);
 		val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
 	}
-	MF_DEBUG("00000001");
 
-	unsigned long flags;
 	if (c->reg == 0xd0)
 		spin_lock_irqsave(&dc_spinlock_clk, flags);
 	clk_writel(val, c->reg + PLL_BASE);
 	if (c->reg == 0xd0)
 		spin_unlock_irqrestore(&dc_spinlock_clk, flags);
 
-	MF_DEBUG("00000002");
 	if (c->flags & PLL_HAS_CPCON) {
 		val = clk_readl(c->reg + PLL_MISC(c));
 		val &= ~PLL_MISC_CPCON_MASK;
@@ -1792,7 +1790,6 @@ static int tegra3_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	if (c->state == ON)
 		tegra3_pll_clk_enable(c);
 
-	MF_DEBUG("00000003");
 	return 0;
 }
 
@@ -3070,11 +3067,11 @@ static noinline int shared_bus_set_rate(struct clk *bus, unsigned long rate,
 
 	mv = tegra_dvfs_predict_millivolts(bus, rate);
 	old_mv = tegra_dvfs_predict_millivolts(bus, old_rate);
-	/*if (IS_ERR_VALUE(mv) || IS_ERR_VALUE(old_mv)) {
+	if (IS_ERR_VALUE(mv) || IS_ERR_VALUE(old_mv)) {
 		pr_err("%s: Failed to predict %s voltage for %lu => %lu\n",
 		       __func__, bus->name, old_rate, rate);
 		return -EINVAL;
-	}*/
+	}
 
 	/* emc bus: set bridge rate as intermediate step when crossing
 	 * bridge threshold in any direction
@@ -4366,12 +4363,12 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",   125,	0x428,	108000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda2codec_2x",	"tegra30-hda",	"hda2codec",   111,	0x3e4,	48000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda2hdmi",	"tegra30-hda",		"hda2hdmi",	128,	0,	48000000,  mux_clk_m,			PERIPH_ON_APB),
-	PERIPH_CLK("sbc1",	"spi_tegra.0",		"spi",	41,	0x134,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sbc2",	"spi_tegra.1",		"spi",	44,	0x118,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sbc3",	"spi_tegra.2",		"spi",	46,	0x11c,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sbc4",	"spi_tegra.3",		"spi",	68,	0x1b4,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sbc5",	"spi_tegra.4",		"spi",	104,	0x3c8,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sbc6",	"spi_tegra.5",		"spi",	105,	0x3cc,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sbc1",	"spi_tegra.0",		"spi",	41,	0x134,	52000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sbc2",	"spi_tegra.1",		"spi",	44,	0x118,	52000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sbc3",	"spi_tegra.2",		"spi",	46,	0x11c,	52000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sbc4",	"spi_tegra.3",		"spi",	68,	0x1b4,	52000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sbc5",	"spi_tegra.4",		"spi",	104,	0x3c8,	52000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("sbc6",	"spi_tegra.5",		"spi",	105,	0x3cc,	52000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	216000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("sata",	"tegra_sata",		NULL,	124,	0x424,	216000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	48000000,  mux_clk_m,			0),
@@ -4864,7 +4861,7 @@ static struct cpufreq_frequency_table freq_table_1p7GHz[] = {
 	{ 2,  204000 },
 	{ 3,  340000 },
 	{ 4,  475000 },
-	{ 5,  640000 },
+	{ 5,  620000 },
 	{ 6,  760000 },
 	{ 7,  910000 },
 	{ 8, 1000000 },
@@ -4920,8 +4917,32 @@ static int clip_cpu_rate_limits(
 		return ret;
 	}
 	cpu_clk_lp->max_rate = freq_table[idx].frequency * 1000;
-	cpu_clk_g->min_rate = freq_table[idx-1].frequency * 1000;
+
+	ret = cpufreq_frequency_table_target(policy, freq_table,
+		T3_GMODE_MIN_FREQ, CPUFREQ_RELATION_H, &idx);
+	if (ret || !idx) {
+		pr_err("%s: LP CPU min rate %lu %s of cpufreq table", __func__,
+		       cpu_clk_lp->min_rate, ret ? "outside" : "at the bottom");
+		return ret;
+	}
+	cpu_clk_g->min_rate = freq_table[idx].frequency * 1000;
+
+	ret = cpufreq_frequency_table_target(policy, freq_table,
+		T3_SUSPEND_FREQ, CPUFREQ_RELATION_H, &idx);
+	if (ret || !idx) {
+		pr_err("%s: suspend rate %d %s of cpufreq table", __func__,
+			T3_SUSPEND_FREQ * 1000, ret ? "outside" : "at the bottom");
+		return ret;
+	}
 	data->suspend_index = idx;
+
+#if 0
+	pr_info("lp->max_rate = %lu\n", cpu_clk_lp->max_rate);
+	pr_info("g->min_rate = %lu\n", cpu_clk_g->min_rate);
+	pr_info("g->max_rate = %lu\n", cpu_clk_g->max_rate);
+	pr_info("suspend_rate = %d\n", freq_table[idx].frequency * 1000);
+#endif
+
 	return 0;
 }
 
@@ -4960,6 +4981,15 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 	return NULL;
 }
 
+static unsigned long emc_max_rate_threshold = 910000;
+module_param(emc_max_rate_threshold, ulong, 0644);
+
+static unsigned long emc_balance_threshold = 620000;
+module_param(emc_balance_threshold, ulong, 0644);
+
+static unsigned long emc_balance_rate = 437000000;
+module_param(emc_balance_rate, ulong, 0644);
+
 /* On DDR3 platforms there is an implicit dependency in this mapping: when cpu
  * exceeds max dvfs level for LP CPU clock at TEGRA_EMC_BRIDGE_MVOLTS_MIN, the
  * respective emc rate should be above TEGRA_EMC_BRIDGE_RATE_MIN
@@ -4975,12 +5005,14 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 
 	/* Vote on memory bus frequency based on cpu frequency;
 	   cpu rate is in kHz, emc rate is in Hz */
-	if (cpu_rate >= 750000)
-		return emc_max_rate;	/* cpu >= 750 MHz, emc max */
-	else if (cpu_rate >= 450000)
-		return emc_max_rate/2;	/* cpu >= 500 MHz, emc max/2 */
-	else if (cpu_rate >= 250000)
-		return 100000000;	/* cpu >= 250 MHz, emc 100 MHz */
+	if (cpu_rate >= emc_max_rate_threshold)
+		return emc_max_rate;	/* cpu >= 910 MHz, emc max */
+    else if (emc_balance_threshold && cpu_rate >= emc_balance_threshold)
+        return emc_balance_rate;/* cpu >= 620 MHz, 437 MHz */
+	else if (cpu_rate >= 475000)
+		return emc_max_rate/2;	/* cpu >= 475 MHz, emc max/2 */
+	else if (cpu_rate >= 204000)
+		return 100000000;	/* cpu >= 204 MHz, emc 100 MHz */
 	else
 		return 0;		/* emc min */
 }
