@@ -700,7 +700,7 @@ static struct tegra_suspend_platform_data endeavortd_suspend_data = {
 	.sysclkreq_high	= true,
 	.board_suspend = endeavortd_board_suspend,
 	.board_resume = endeavortd_board_resume,
-	.cpu_resume_boost	= BOOST_CPU_FREQ_MIN,
+	.cpu_resume_boost	= T3_CPU_FREQ_BOOST,
 	.boost_resume_reason	= 0x80,
 };
 

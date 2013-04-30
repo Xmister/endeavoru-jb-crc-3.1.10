@@ -704,7 +704,7 @@ static struct tegra_suspend_platform_data endeavoru_suspend_data = {
 	.sysclkreq_high	= true,
 	.board_suspend = endeavoru_board_suspend,
 	.board_resume = endeavoru_board_resume,
-	.cpu_resume_boost	= BOOST_CPU_FREQ_MIN,
+	.cpu_resume_boost	= T3_CPU_FREQ_BOOST,
 	.boost_resume_reason	= 0x80,
 #ifdef CONFIG_TEGRA_LP1_950
 	.lp1_lowvolt_support = true,
