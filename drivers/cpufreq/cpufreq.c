@@ -695,12 +695,7 @@ static ssize_t store_scaling_max_freq_limit(struct cpufreq_policy *policy,
 
 static ssize_t store_scaling_max_freq					
 (struct cpufreq_policy *policy, const char *buf, size_t count)		
-{
-	if (miss_freq_set > 0) {
-		pr_info("Xmister: Maxfreq miss\n");
-		--miss_freq_set;
-		return -EINVAL;
-	}									
+{									
 	unsigned int ret = -EINVAL;					
 	struct cpufreq_policy new_policy;
 	char* temp;			
