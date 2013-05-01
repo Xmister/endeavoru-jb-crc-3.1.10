@@ -676,7 +676,7 @@ static ssize_t store_scaling_max_freq_limit(struct cpufreq_policy *policy,
 		max = tegra_pmqos_cpu_freq_limits[cpu];
 		if (max == 0)
 			// valus = 0 means reset to default
-			max = T3_CPU_FREQ_BOOST;	
+			max = T3_CPU_FREQ_MAX;	
 				
 		
 		new_policy.max = max;
@@ -708,7 +708,7 @@ static ssize_t store_scaling_max_freq
 	if (ret != 1)							
 		return -EINVAL;						
 /*Bricked:*/					
-	if (new_policy.max <= 475000)
+	if (new_policy.max <= tegra_lpmode_freq_max())
                 return -EINVAL;
 /*EndBricked*/
 				
