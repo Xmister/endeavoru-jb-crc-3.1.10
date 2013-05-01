@@ -856,6 +856,12 @@ config TEGRA_UNIFY_VARIANT
     default n
     help
       Use variant 4 default voltages also for variant 3
+      
+config SENSE_4_PLUS
+	depends on ARCH_TEGRA_3x_SOC
+	bool "SENSE 4 PLUS"
+	help
+	  Support for SENSE 4 PLUS.
 
 config BUILD_FOR_SENSE
 	depends on ARCH_TEGRA_3x_SOC
