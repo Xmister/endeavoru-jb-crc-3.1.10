@@ -26,8 +26,8 @@
  */
 
 /* in kHz */
-#define T3_CPU_FREQ_MAX_0		1500000
-#define T3_CPU_FREQ_MAX			1400000
+#define T3_CPU_FREQ_MAX_0		1300000
+#define T3_CPU_FREQ_MAX			1300000
 #define T3_CPU_FREQ_MAX_OC		1500000
 /* any caps will be respected */
 #define T3_CPU_FREQ_BOOST		1300000
