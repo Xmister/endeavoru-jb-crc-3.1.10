@@ -303,7 +303,7 @@ static void mtp_setup_perflock()
 	del_timer(&dev->perf_timer);
 	if (dev->mtp_perf_lock_on) {
 		printk(KERN_INFO "[USB][MTP] %s, perf on\n", __func__);
-		pm_qos_update_request(&mtp_req_freq, (s32)MTP_CPU_FREQ_MIN;
+		pm_qos_update_request(&mtp_req_freq, (s32)MTP_CPU_FREQ_MIN);
 		pm_qos_update_request(&req_cpus, (s32)MTP_ONLINE_CPUS_MIN);
 
 	} else {
