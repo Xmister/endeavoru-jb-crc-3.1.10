@@ -35,39 +35,46 @@
 #define T3_SUSPEND_FREQ     	475000
 #define T3_GMODE_MIN_FREQ     	340000
 
+/* Voltages */
+#define VDD_CPU_MIN				700
+#define VDD_CPU_MAX				1250
+#define VDD_CORE_MIN			950
+#define VDD_CORE_MAX			1350
+
 // used for governors ideal or idle freq
 #define GOV_IDLE_FREQ     		475000
 
 // sysfs to change available
 #define SUSPEND_CPU_NUM_MAX		2
 
-// f_mtp.c
+// drivers/usb/gadget/f_mtp.c
 #define MTP_CPU_FREQ_MIN 1150000
 #define MTP_ONLINE_CPUS_MIN 2
 
-// tlv320aic3008.c - sysfs to change available
+// sound/soc/codecs/tlv320aic3008.c - sysfs to change available
 #define AUD_CPU_FREQ_MIN 102000
 
-// android.c
+// drivers/usb/gadget/android.c
 #define USB_TP_CPU_FREQ_MIN 475000
 
-// tegra_udc.h 
+// drivers/usb/gadget/tegra_udc.c
 #define TEGRA_GADGET_CPU_FREQ_MIN 475000
 
-// tegra_hsuart.c - not automatic must be enabled via sysfs
-// we dont need that on enrc2b
+// drivers/tty/serial/tegra_hsuart.c - not automatic must be enabled via sysfs
 #define TI_A2DP_CPU_FREQ_MIN 102000
 
 // tegra_hsuart_brcm.c - not automatic must be enabled via sysfs
 // sysfs to change available
+// We don't need this on endeavor
 #define A2DP_CPU_FREQ_MIN 204000
 #define OPP_CPU_FREQ_MIN 475000
 
 // wl_android.c
+// We don't need this on endeavor
 #define WIFI_CPU_FREQ_MIN 1150000
 #define WIFI_ONLINE_CPUS_MIN 2
 
-// usbnet.c
+// drivers/net/usb/usbnet.c
 #define USBNET_CPU_FREQ_MIN 475000
 #define USBNET_ONLINE_CPUS_MIN 2
 

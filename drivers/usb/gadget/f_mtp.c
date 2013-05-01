@@ -36,6 +36,7 @@
 #include <linux/usb_usual.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/f_mtp.h>
+#include "../../../arch/arm/mach-tegra/tegra_pmqos.h"
 
 #define MTP_BULK_BUFFER_SIZE       131072
 #define INTR_BUFFER_SIZE           28
@@ -292,9 +293,6 @@ struct mtp_device_status {
 	__le16	wCode;
 };
 
-#define PM_QOS_CPU_USB_FREQ_MAX_DEFAULT_VALUE 1600000
-#define PM_QOS_MIN_ONLINE_CPUS_USB_TWO_VALUE 1
-
 /* temporary variable used between mtp_open() and mtp_gadget_bind() */
 static struct mtp_dev *_mtp_dev;
 static void mtp_setup_perflock()
@@ -305,13 +303,13 @@ static void mtp_setup_perflock()
 	del_timer(&dev->perf_timer);
 	if (dev->mtp_perf_lock_on) {
 		printk(KERN_INFO "[USB][MTP] %s, perf on\n", __func__);
-		//pm_qos_update_request(&mtp_req_freq, (s32)PM_QOS_CPU_USB_FREQ_MAX_DEFAULT_VALUE);
-		//pm_qos_update_request(&req_cpus, (s32)PM_QOS_MIN_ONLINE_CPUS_USB_TWO_VALUE);
+		pm_qos_update_request(&mtp_req_freq, (s32)MTP_CPU_FREQ_MIN;
+		pm_qos_update_request(&req_cpus, (s32)MTP_ONLINE_CPUS_MIN);
 
 	} else {
 		printk(KERN_INFO "[USB][MTP] %s, perf off\n", __func__);
-		//pm_qos_update_request(&mtp_req_freq, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
-		//pm_qos_update_request(&req_cpus, (s32)PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
+		pm_qos_update_request(&mtp_req_freq, (s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+		pm_qos_update_request(&req_cpus, (s32)PM_QOS_MIN_ONLINE_CPUS_DEFAULT_VALUE);
 	}
 }
 /* 50 ms per file */

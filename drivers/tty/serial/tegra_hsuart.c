@@ -40,6 +40,8 @@
 #include <linux/workqueue.h>
 #include <linux/tegra_uart.h>
 
+#include "../../../arch/arm/mach-tegra/tegra_pmqos.h"
+
 #ifdef CONFIG_BT_CTS_WAKEUP
 #include <linux/gpio.h>
 #endif
@@ -100,10 +102,6 @@ const int dma_req_sel[] = {
 #define TEGRA_UART_TX_TRIG_8B  0x10
 #define TEGRA_UART_TX_TRIG_4B  0x20
 #define TEGRA_UART_TX_TRIG_1B  0x30
-
-#ifdef TI_A2DP_TUNING_SUPPORTED
-#define TI_A2DP_CPU_FREQ_MIN 102000
-#endif
 
 #ifdef CONFIG_BT_CTS_WAKEUP
 struct tegra_uart_bt {

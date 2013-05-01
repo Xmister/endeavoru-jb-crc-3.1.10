@@ -28,6 +28,7 @@
 #include "fuse.h"
 #include "board.h"
 #include "tegra3_emc.h"
+#include "tegra_pmqos.h"
 
 #define CPU_MILLIVOLTS {\
 	750, 762, 775, 787, 800, 825, 837, 850, 862, 875, 887, 900, 912, 916, 925, 937, 950, 962, 975, 987, 1000, 1007, 1012, 1025, 1037, 1050, 1062, 1075, 1087, 1100, 1112, 1125, 1137, 1150, 1162, 1175, 1187, 1200, 1212, 1237};
@@ -59,14 +60,8 @@ static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 #define VDD_SAFE_STEP			100
 #define VDD_MAX_CHANGE			200
 
-#define VDD_CPU_MIN				700
-#define VDD_CPU_MAX				1250
-
 #define VDD_CPU_DEFAULT_MVS		-25
 #define VDD_CPU_DEFAULT_MVS_UNIFY		-25
-
-#define VDD_CORE_MIN			950
-#define VDD_CORE_MAX			1350
 
 static int curr_cpu_vdd_change = 0;
 extern struct mutex dvfs_lock;

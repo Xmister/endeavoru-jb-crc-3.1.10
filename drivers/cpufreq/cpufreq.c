@@ -676,7 +676,7 @@ static ssize_t store_scaling_max_freq_limit(struct cpufreq_policy *policy,
 		max = tegra_pmqos_cpu_freq_limits[cpu];
 		if (max == 0)
 			// valus = 0 means reset to default
-			max = tegra_pmqos_boost_freq;	
+			max = T3_CPU_FREQ_BOOST;	
 				
 		
 		new_policy.max = max;
@@ -710,7 +710,6 @@ static ssize_t store_scaling_max_freq
 /*Bricked:*/					
 	if (new_policy.max <= 475000)
                 return -EINVAL;
-	tegra_pmqos_boost_freq = new_policy.max;
 /*EndBricked*/
 				
 	ret = __cpufreq_set_policy(policy, &new_policy);		
@@ -837,14 +836,14 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy, char *buf, size_
 			for (j=uv_list[i].min_pos; j<=uv_list[i].max_pos; ++j) {
 				temp=uv_list[i].mv_table[j-uv_list[i].min_pos]-uv;
 				if (!uv_list[i].core)	{
-					if ( temp < MIN_CPU_MV ) temp = MIN_CPU_MV;
-					else if ( temp > MAX_CPU_MV ) temp = MAX_CPU_MV;
+					if ( temp < VDD_CPU_MIN ) temp = VDD_CPU_MIN;
+					else if ( temp > VDD_CPU_MAX ) temp = VDD_CPU_MAX;
 					user_mv_table[j] = temp;
 					pr_info("user mv tbl@%luMHz[%i]: %lu\n",uv_list[i].mhz, j, user_mv_table[j]);
 				}
 				else	{
-					if ( temp < MIN_CORE_MV ) temp = MIN_CORE_MV;
-					else if ( temp > MAX_CORE_MV ) temp = MAX_CORE_MV;
+					if ( temp < VDD_CORE_MIN ) temp = VDD_CORE_MIN;
+					else if ( temp > VDD_CORE_MAX ) temp = VDD_CORE_MAX;
 					core_user_millivolts[j] = temp;
 					pr_info("core mv tbl@%luMHz[%i]: %lu\n",uv_list[i].mhz, j, core_user_millivolts[j]);
 				}

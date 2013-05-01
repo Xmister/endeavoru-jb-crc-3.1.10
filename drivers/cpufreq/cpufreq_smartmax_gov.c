@@ -27,10 +27,10 @@
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
 
-#define DEFAULT_SUSPEND_IDEAL_FREQ 475000
+#define DEFAULT_SUSPEND_IDEAL_FREQ T3_SUSPEND_FREQ
 static unsigned int suspend_ideal_freq;
 
-#define DEFAULT_AWAKE_IDEAL_FREQ 475000
+#define DEFAULT_AWAKE_IDEAL_FREQ GOV_IDLE_FREQ
 static unsigned int awake_ideal_freq;
 
 /*

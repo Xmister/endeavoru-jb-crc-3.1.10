@@ -30,7 +30,7 @@
 #define DEFAULT_SUSPEND_IDEAL_FREQ 340000
 static unsigned int suspend_ideal_freq;
 
-#define DEFAULT_AWAKE_IDEAL_FREQ 475000
+#define DEFAULT_AWAKE_IDEAL_FREQ GOV_IDLE_FREQ
 static unsigned int awake_ideal_freq;
 
 /*
