@@ -25,6 +25,13 @@
  *
  */
 
+extern unsigned int tegra_pmqos_cpu_freq_limits[];
+extern unsigned int tegra_pmqos_cpu_freq_limits_min[];
+extern unsigned int tegra_cpu_freq_max(unsigned int cpu);
+extern unsigned int tegra_get_suspend_boost_freq(void);
+extern unsigned int tegra_lpmode_freq_max(void);
+extern void tegra_lpmode_freq_max_changed(void);
+
 /* in kHz */
 #define T3_CPU_FREQ_MAX_0		1300000
 #define T3_CPU_FREQ_MAX			1300000
@@ -32,7 +39,7 @@
 /* any caps will be respected */
 #define T3_CPU_FREQ_BOOST		1300000
 #define T3_CPU_MIN_FREQ     	51000
-#define T3_SUSPEND_FREQ     	475000
+#define T3_SUSPEND_FREQ     	tegra_lpmode_freq_max()
 #define T3_GMODE_MIN_FREQ     	340000
 
 /* Voltages */
@@ -42,7 +49,7 @@
 #define VDD_CORE_MAX			1350
 
 // used for governors ideal or idle freq
-#define GOV_IDLE_FREQ     		475000
+#define GOV_IDLE_FREQ     		tegra_lpmode_freq_max()
 
 // sysfs to change available
 #define SUSPEND_CPU_NUM_MAX		2
@@ -55,10 +62,10 @@
 #define AUD_CPU_FREQ_MIN 102000
 
 // drivers/usb/gadget/android.c
-#define USB_TP_CPU_FREQ_MIN 475000
+#define USB_TP_CPU_FREQ_MIN T3_SUSPEND_FREQ
 
 // drivers/usb/gadget/tegra_udc.c
-#define TEGRA_GADGET_CPU_FREQ_MIN 475000
+#define TEGRA_GADGET_CPU_FREQ_MIN T3_SUSPEND_FREQ
 
 // drivers/tty/serial/tegra_hsuart.c - not automatic must be enabled via sysfs
 #define TI_A2DP_CPU_FREQ_MIN 102000
@@ -75,13 +82,6 @@
 #define WIFI_ONLINE_CPUS_MIN 2
 
 // drivers/net/usb/usbnet.c
-#define USBNET_CPU_FREQ_MIN 475000
+#define USBNET_CPU_FREQ_MIN T3_SUSPEND_FREQ
 #define USBNET_ONLINE_CPUS_MIN 2
-
-extern unsigned int tegra_pmqos_cpu_freq_limits[];
-extern unsigned int tegra_pmqos_cpu_freq_limits_min[];
-extern unsigned int tegra_cpu_freq_max(unsigned int cpu);
-extern unsigned int tegra_get_suspend_boost_freq(void);
-extern unsigned int tegra_lpmode_freq_max(void);
-extern void tegra_lpmode_freq_max_changed(void);
 
