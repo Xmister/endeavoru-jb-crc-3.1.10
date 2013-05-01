@@ -39,7 +39,7 @@ extern void tegra_lpmode_freq_max_changed(void);
 /* any caps will be respected */
 #define T3_CPU_FREQ_BOOST		1300000
 #define T3_CPU_MIN_FREQ     	51000
-#define T3_SUSPEND_FREQ     	tegra_lpmode_freq_max()
+#define T3_SUSPEND_FREQ     	475000
 #define T3_GMODE_MIN_FREQ     	340000
 
 /* Voltages */
@@ -49,7 +49,7 @@ extern void tegra_lpmode_freq_max_changed(void);
 #define VDD_CORE_MAX			1350
 
 // used for governors ideal or idle freq
-#define GOV_IDLE_FREQ     		tegra_lpmode_freq_max()
+#define GOV_IDLE_FREQ     		T3_SUSPEND_FREQ
 
 // sysfs to change available
 #define SUSPEND_CPU_NUM_MAX		2
