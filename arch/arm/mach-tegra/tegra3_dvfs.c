@@ -56,14 +56,14 @@ static int enable_gpu_voltage = 0;
 
 /* VDD_CPU >= (VDD_CORE - cpu_below_core) */
 /* VDD_CORE >= min_level(VDD_CPU), see tegra3_get_core_floor_mv() below */
-#define VDD_CPU_BELOW_VDD_CORE		300
+#define VDD_CPU_BELOW_VDD_CORE		200
 static int cpu_below_core = VDD_CPU_BELOW_VDD_CORE;
 
 #define VDD_SAFE_STEP			100
 #define VDD_MAX_CHANGE			200
 
-#define VDD_CPU_DEFAULT_MVS		-25
-#define VDD_CPU_DEFAULT_MVS_UNIFY		-25
+#define VDD_CPU_DEFAULT_MVS		0
+#define VDD_CPU_DEFAULT_MVS_UNIFY		0
 
 static int curr_cpu_vdd_change = 0;
 extern struct mutex dvfs_lock;
