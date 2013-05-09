@@ -769,7 +769,7 @@ static int cpufreq_governor_gaming(struct cpufreq_policy *policy,
 		if (!policy->cpu)
 			rc = input_register_handler(&dbs_input_handler);
 #ifdef CONFIG_BUILD_FOR_SENSE		
-		calibration_control = false;
+		//calibration_control = false;
 #endif
 		
 		break;
