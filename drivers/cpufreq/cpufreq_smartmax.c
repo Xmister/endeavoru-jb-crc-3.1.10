@@ -9,7 +9,7 @@
  *
  * Author: maxwen
  *
- * Based on the ondemand and smartmax governor
+ * Based on the ondemand and smartassV2 governor
  *
  * ondemand:
  *  Copyright (C)  2001 Russell King
@@ -23,10 +23,6 @@
  * Documentation/cpu-freq/governors.txt
  *
  */
- 
-#define LATENCY_MULTIPLIER      (1000)
-#define MIN_LATENCY_MULTIPLIER      (100)
-#define TRANSITION_LATENCY_LIMIT    (10 * 1000 * 1000)
 
 #define SMARTMAX_STAT 0
 #if SMARTMAX_STAT
@@ -35,19 +31,73 @@ static u64 timer_stat[4] = {0, 0, 0, 0};
 
 static unsigned int suspend_ideal_freq;
 static unsigned int awake_ideal_freq;
+/*
+ * Freqeuncy delta when ramping up above the ideal freqeuncy.
+ * Zero disables and causes to always jump straight to max frequency.
+ * When below the ideal freqeuncy we always ramp up to the ideal freq.
+ */
 static unsigned int ramp_up_step;
+
+/*
+ * Freqeuncy delta when ramping down below the ideal freqeuncy.
+ * Zero disables and will calculate ramp down according to load heuristic.
+ * When above the ideal freqeuncy we always ramp down to the ideal freq.
+ */
 static unsigned int ramp_down_step;
+
+/*
+ * CPU freq will be increased if measured load > max_cpu_load;
+ */
 static unsigned int max_cpu_load;
+
+/*
+ * CPU freq will be decreased if measured load < min_cpu_load;
+ */
 static unsigned int min_cpu_load;
+
+/*
+ * The minimum amount of time in usecs to spend at a frequency before we can ramp up.
+ * Notice we ignore this when we are below the ideal frequency.
+ */
 static unsigned int up_rate;
+
+/*
+ * The minimum amount of time in usecs to spend at a frequency before we can ramp down.
+ * Notice we ignore this when we are above the ideal frequency.
+ */
 static unsigned int down_rate;
+
+/* in usecs */
 static unsigned int sampling_rate;
+
+/* in usecs */
 static unsigned int input_boost_duration;
+
 static unsigned int touch_poke_freq;
+static bool touch_poke = true;
+
+/*
+ * should ramp_up steps during boost be possible
+ */
+static bool ramp_up_during_boost = true;
+
+/*
+ * external boost interface - boost if duration is written
+ * to sysfs for boost_duration
+ */
 static unsigned int boost_freq;
+static bool boost = true;
+
+/* in usecs */
+static unsigned int boost_duration = 0;
+
+/* Consider IO as busy */
 static unsigned int io_is_busy;
+
 static unsigned int ignore_nice;
-static unsigned int min_sampling_rate;
+
+/*************** End of tunables ***************/
+
 static unsigned int dbs_enable; /* number of CPUs using this policy */
 
 static void do_dbs_timer(struct work_struct *work);
@@ -114,10 +164,41 @@ static unsigned int cur_boost_duration = 0;
 static bool boost_running = false;
 static unsigned int ideal_freq;
 static bool is_suspended = false;
+static unsigned int min_sampling_rate;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend smartmax_early_suspend_handler;
 #endif
+
+#define LATENCY_MULTIPLIER			(1000)
+#define MIN_LATENCY_MULTIPLIER			(100)
+#define TRANSITION_LATENCY_LIMIT		(10 * 1000 * 1000)
+
+/*
+ * The polling frequency of this governor depends on the capability of
+ * the processor. Default polling frequency is 1000 times the transition
+ * latency of the processor. The governor will work on any processor with
+ * transition latency <= 10mS, using appropriate sampling
+ * rate.
+ * For CPUs with transition latency > 10mS (mostly drivers with CPUFREQ_ETERNAL)
+ * this governor will not work.
+ * All times here are in uS.
+ */
+#define MIN_SAMPLING_RATE_RATIO			(2)
+#define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
+
+static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
+		unsigned int event);
+
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
+static
+#endif
+struct cpufreq_governor cpufreq_gov_smartmax = { 
+    .name = "smartmax", 
+    .governor = cpufreq_governor_smartmax, 
+    .max_transition_latency = TRANSITION_LATENCY_LIMIT, 
+    .owner = THIS_MODULE,
+    };
 
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu,
 		u64 *wall) {
@@ -674,7 +755,7 @@ static ssize_t store_sampling_rate(struct kobject *kobj, struct attribute *attr,
 	ssize_t res;
 	unsigned long input;
 	res = strict_strtoul(buf, 0, &input);
-	if (res >= 0 && input > 10000 && input >= min_sampling_rate)
+	if (res >= 0 && input >= min_sampling_rate)
 		sampling_rate = input;
 	else
 		return -EINVAL;
@@ -852,10 +933,10 @@ static ssize_t store_ignore_nice(struct kobject *a, struct attribute *b,
 #define define_global_rw_attr(_name)		\
 static struct global_attr _name##_attr =	\
 	__ATTR(_name, 0644, show_##_name, store_##_name)
-	
-#define define_global_ro_attr(_name)    \
-static struct global_attr _name##_attr =  \
-  __ATTR(_name, 0444, show_##_name, store_##_name)
+
+#define define_global_ro_attr(_name)		\
+static struct global_attr _name##_attr =	\
+	__ATTR(_name, 0444, show_##_name, store_##_name)
 
 define_global_rw_attr(debug_mask);
 define_global_rw_attr(up_rate);
@@ -1092,12 +1173,14 @@ static int FUNC_NAME(struct cpufreq_policy *new_policy,
 #ifdef CONFIG_HAS_EARLYSUSPEND
 			register_early_suspend(&smartmax_early_suspend_handler);
 #endif
+            /* policy latency is in nS. Convert it to uS first */
 			latency = new_policy->cpuinfo.transition_latency / 1000;
 			if (latency == 0)
 				latency = 1;
-      
-			min_sampling_rate = max(sampling_rate, MIN_LATENCY_MULTIPLIER * latency);
-			sampling_rate = max(min_sampling_rate, latency * LATENCY_MULTIPLIER);
+			
+            /* Bring kernel and HW constraints together */
+			min_sampling_rate = max(min_sampling_rate, MIN_LATENCY_MULTIPLIER * latency);
+			sampling_rate = max(min_sampling_rate, sampling_rate);
 		}
 
 		mutex_unlock(&dbs_mutex);
@@ -1150,6 +1233,24 @@ static int FUNC_NAME(struct cpufreq_policy *new_policy,
 static int __init cpufreq_smartmax_init(void) {
 	unsigned int i;
 	struct smartmax_info_s *this_smartmax;
+	u64 wall;
+	u64 idle_time;
+	int cpu = get_cpu();
+
+	idle_time = get_cpu_idle_time_us(cpu, &wall);
+	put_cpu();
+	if (idle_time != -1ULL) {
+		/*
+		 * In no_hz/micro accounting case we set the minimum frequency
+		 * not depending on HZ, but fixed (very low). The deferred
+		 * timer might skip some samples if idle/sleeping as needed.
+		*/
+		min_sampling_rate = MICRO_FREQUENCY_MIN_SAMPLE_RATE;
+	} else {
+		/* For correct statistics, we need 10 ticks for each measure */
+		min_sampling_rate = MIN_SAMPLING_RATE_RATIO * jiffies_to_usecs(10);
+	}
+
 	up_rate = DEFAULT_UP_RATE;
 	down_rate = DEFAULT_DOWN_RATE;
 	suspend_ideal_freq = DEFAULT_SUSPEND_IDEAL_FREQ;
