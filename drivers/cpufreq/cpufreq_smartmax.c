@@ -106,11 +106,11 @@ struct smartmax_info_s {
 	struct cpufreq_policy *cur_policy;
 	struct cpufreq_frequency_table *freq_table;
 	struct delayed_work work;
-	cputime64_t prev_cpu_idle;
-	cputime64_t prev_cpu_iowait;
-	cputime64_t prev_cpu_wall;
-	cputime64_t prev_cpu_nice;
-	cputime64_t freq_change_time;
+	u64 prev_cpu_idle;
+	u64 prev_cpu_iowait;
+	u64 prev_cpu_wall;
+	u64 prev_cpu_nice;
+	u64 freq_change_time;
 	unsigned int cur_cpu_load;
 	unsigned int old_freq;
 	int ramp_dir;
@@ -158,7 +158,7 @@ extern int tegra_input_boost(int cpu, unsigned int target_freq);
 
 static bool boost_task_alive = false;
 static struct task_struct *boost_task;
-static cputime64_t boost_end_time = 0ULL;
+static u64 boost_end_time = 0ULL;
 static unsigned int cur_boost_freq = 0;
 static unsigned int cur_boost_duration = 0;
 static bool boost_running = false;
@@ -187,8 +187,20 @@ static struct early_suspend smartmax_early_suspend_handler;
 #define MIN_SAMPLING_RATE_RATIO			(2)
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 
-static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu,
-		u64 *wall) {
+static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
+		unsigned int event);
+
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
+static
+#endif
+struct cpufreq_governor cpufreq_gov_smartmax = { 
+    .name = "smartmax", 
+    .governor = cpufreq_governor_smartmax, 
+    .max_transition_latency = TRANSITION_LATENCY_LIMIT, 
+    .owner = THIS_MODULE,
+    };
+
+static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall) {
 
 	u64 idle_time;
 	u64 cur_wall_time;
@@ -219,8 +231,7 @@ static inline u64 get_cpu_idle_time(unsigned int cpu, u64 *wall) {
 	return idle_time;
 }
 
-static inline u64 get_cpu_iowait_time(unsigned int cpu,
-		u64 *wall) {
+static inline u64 get_cpu_iowait_time(unsigned int cpu, u64 *wall) {
 	u64 iowait_time = get_cpu_iowait_time_us(cpu, wall);
 
 	if (iowait_time == -1ULL)
@@ -390,7 +401,8 @@ static void cpufreq_smartmax_freq_change(struct smartmax_info_s *this_smartmax) 
 	this_smartmax->ramp_dir = 0;
 }
 
-static inline void cpufreq_smartmax_get_ramp_direction(unsigned int debug_load, unsigned int cur, struct smartmax_info_s *this_smartmax, struct cpufreq_policy *policy, u64 now){
+static inline void cpufreq_smartmax_get_ramp_direction(unsigned int debug_load, unsigned int cur, struct smartmax_info_s *this_smartmax, struct cpufreq_policy *policy, u64 now)
+{
 	// Scale up if load is above max or if there where no idle cycles since coming out of idle,
 	// additionally, if we are at or above the ideal_speed, verify we have been at this frequency
 	// for at least up_rate:
@@ -426,12 +438,12 @@ static void cpufreq_smartmax_timer(struct smartmax_info_s *this_smartmax) {
 
 #if SMARTMAX_STAT 
 	unsigned int cpu = this_smartmax->cpu;
-		u64 diff = 0;
-    
-		if (timer_stat[cpu])
-			diff = now - timer_stat[cpu];
-        
-		timer_stat[cpu] = now;
+	u64 diff = 0;
+
+	if (timer_stat[cpu])
+		diff = now - timer_stat[cpu];
+
+	timer_stat[cpu] = now;
 	printk(KERN_DEBUG "[smartmax]:cpu %d %lld\n", cpu, diff);
 #endif
 
@@ -520,7 +532,7 @@ static void cpufreq_smartmax_timer(struct smartmax_info_s *this_smartmax) {
 		return;
 
 	// boost - but not block ramp up steps based on load if requested
-	if (boost_running && time_before64 (now, boost_end_time)) {
+	if (boost_running && (now < boost_end_time)) {
 		dprintk(SMARTMAX_DEBUG_BOOST, "%d: boost running %llu %llu\n", cur, now, boost_end_time);
 		
 		if (this_smartmax->ramp_dir == -1)
@@ -1106,7 +1118,7 @@ static int FUNC_NAME(struct cpufreq_policy *new_policy,
 	int rc;
 	struct smartmax_info_s *this_smartmax = &per_cpu(smartmax_info, cpu);
 	struct sched_param param = { .sched_priority = 1 };
-	unsigned int latency;
+    unsigned int latency;
 
 	switch (event) {
 	case CPUFREQ_GOV_START:
@@ -1160,12 +1172,12 @@ static int FUNC_NAME(struct cpufreq_policy *new_policy,
 #ifdef CONFIG_HAS_EARLYSUSPEND
 			register_early_suspend(&smartmax_early_suspend_handler);
 #endif
-            /* policy latency is in nS. Convert it to uS first */
+			/* policy latency is in nS. Convert it to uS first */
 			latency = new_policy->cpuinfo.transition_latency / 1000;
 			if (latency == 0)
 				latency = 1;
-			
-            /* Bring kernel and HW constraints together */
+
+			/* Bring kernel and HW constraints together */
 			min_sampling_rate = max(min_sampling_rate, MIN_LATENCY_MULTIPLIER * latency);
 			sampling_rate = max(min_sampling_rate, sampling_rate);
 		}
