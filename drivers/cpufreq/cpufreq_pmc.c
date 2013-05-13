@@ -28,10 +28,8 @@
  */
 
 #define DEFAULT_SUSPEND_IDEAL_FREQ 340000
-static unsigned int suspend_ideal_freq;
 
 #define DEFAULT_AWAKE_IDEAL_FREQ GOV_IDLE_FREQ
-static unsigned int awake_ideal_freq;
 
 /*
  * Freqeuncy delta when ramping up above the ideal freqeuncy.
@@ -39,7 +37,6 @@ static unsigned int awake_ideal_freq;
  * When below the ideal freqeuncy we always ramp up to the ideal freq.
  */
 #define DEFAULT_RAMP_UP_STEP 300000
-static unsigned int ramp_up_step;
 
 /*
  * Freqeuncy delta when ramping down below the ideal freqeuncy.
@@ -47,43 +44,39 @@ static unsigned int ramp_up_step;
  * When above the ideal freqeuncy we always ramp down to the ideal freq.
  */
 #define DEFAULT_RAMP_DOWN_STEP 200000
-static unsigned int ramp_down_step;
 
 /*
  * CPU freq will be increased if measured load > max_cpu_load;
  */
 #define DEFAULT_MAX_CPU_LOAD 75
-static unsigned int max_cpu_load;
 
 /*
  * CPU freq will be decreased if measured load < min_cpu_load;
  */
 #define DEFAULT_MIN_CPU_LOAD 40
-static unsigned int min_cpu_load;
 
 /*
  * The minimum amount of time in nsecs to spend at a frequency before we can ramp up.
  * Notice we ignore this when we are below the ideal frequency.
  */
 #define DEFAULT_UP_RATE 20000
-static unsigned int up_rate;
 
 /*
  * The minimum amount of time in nsecs to spend at a frequency before we can ramp down.
  * Notice we ignore this when we are above the ideal frequency.
  */
 #define DEFAULT_DOWN_RATE 60000
-static unsigned int down_rate;
 
 /* in nsecs */
 #define DEFAULT_SAMPLING_RATE 20000
-static unsigned int sampling_rate;
 
 /* in nsecs */
-#define DEFAULT_INPUT_BOOST_DURATION 50000000
-static unsigned int input_boost_duration;
+#define DEFAULT_INPUT_BOOST_DURATION 90000
 
-static unsigned int touch_poke_freq = 640000;
+#define DEFAULT_TOUCH_POKE_FREQ 640000
+
+#define DEFAULT_BOOST_FREQ 760000
+
 static bool touch_poke = true;
 
 /*
@@ -95,7 +88,6 @@ static bool ramp_up_during_boost = true;
  * external boost interface - boost if duration is written
  * to sysfs for boost_duration
  */
-static unsigned int boost_freq = 760000;
 static bool boost = true;
 
 /* in nsecs */
@@ -103,10 +95,8 @@ static unsigned int boost_duration = 0;
 
 /* Consider IO as busy */
 #define DEFAULT_IO_IS_BUSY 1
-static unsigned int io_is_busy;
 
 #define DEFAULT_IGNORE_NICE 1
-static unsigned int ignore_nice;
 
 #define GOVERNOR_NAME "pmc"
 #define STRUCT_NAME cpufreq_gov_pmc
