@@ -158,7 +158,7 @@ extern int tegra_input_boost(int cpu, unsigned int target_freq);
 
 static bool boost_task_alive = false;
 static struct task_struct *boost_task;
-static u64 boost_end_time = 0ULL;
+static u64 boost_end_time = 0;
 static unsigned int cur_boost_freq = 0;
 static unsigned int cur_boost_duration = 0;
 static bool boost_running = false;
