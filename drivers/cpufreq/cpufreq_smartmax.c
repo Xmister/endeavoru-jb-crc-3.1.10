@@ -187,19 +187,6 @@ static struct early_suspend smartmax_early_suspend_handler;
 #define MIN_SAMPLING_RATE_RATIO			(2)
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 
-static int cpufreq_governor_smartmax(struct cpufreq_policy *policy,
-		unsigned int event);
-
-#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTMAX
-static
-#endif
-struct cpufreq_governor cpufreq_gov_smartmax = { 
-    .name = "smartmax", 
-    .governor = cpufreq_governor_smartmax, 
-    .max_transition_latency = TRANSITION_LATENCY_LIMIT, 
-    .owner = THIS_MODULE,
-    };
-
 static inline u64 get_cpu_idle_time_jiffy(unsigned int cpu, u64 *wall) {
 
 	u64 idle_time;
