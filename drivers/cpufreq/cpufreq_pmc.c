@@ -77,22 +77,6 @@
 
 #define DEFAULT_BOOST_FREQ 760000
 
-static bool touch_poke = true;
-
-/*
- * should ramp_up steps during boost be possible
- */
-static bool ramp_up_during_boost = true;
-
-/*
- * external boost interface - boost if duration is written
- * to sysfs for boost_duration
- */
-static bool boost = true;
-
-/* in nsecs */
-static unsigned int boost_duration = 0;
-
 /* Consider IO as busy */
 #define DEFAULT_IO_IS_BUSY 1
 
